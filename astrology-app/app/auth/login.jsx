@@ -25,6 +25,7 @@ import { Colors } from '../../constants/Colors';
 import { Typography } from '../../constants/Typography';
 import { Layout } from '../../constants/Layout';
 import { Ionicons } from '@expo/vector-icons';
+import { authLogin, setAuthToken } from '../../services/api';
 
 const { width, height } = Dimensions.get('window');
 
@@ -34,6 +35,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [apiError, setApiError] = useState('');
   const [loading, setLoading] = useState(false);
 
   // Entrance animations
@@ -72,10 +74,16 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     if (!validate()) return;
     setLoading(true);
-    // Simulate API call
-    await new Promise((r) => setTimeout(r, 1200));
-    setLoading(false);
-    router.replace('/(tabs)');
+    setApiError('');
+    try {
+      const { token } = await authLogin({ email, password });
+      setAuthToken(token);
+      router.replace('/(tabs)');
+    } catch (err) {
+      setApiError(err.message ?? 'Login failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -160,6 +168,11 @@ export default function LoginScreen() {
               <TouchableOpacity style={styles.forgotWrap}>
                 <Text style={styles.forgotText}>Forgot Password?</Text>
               </TouchableOpacity>
+
+              {/* API error */}
+              {apiError ? (
+                <Text style={styles.apiError}>{apiError}</Text>
+              ) : null}
 
               {/* CTA Button */}
               <GlowButton
@@ -272,6 +285,13 @@ const styles = StyleSheet.create({
     width: '100%',
     marginBottom: 24,
     borderRadius: 12,
+  },
+
+  apiError: {
+    fontSize: 13,
+    color: '#FF4A6A',
+    textAlign: 'center',
+    marginBottom: 12,
   },
 
   // Sign up

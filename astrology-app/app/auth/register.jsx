@@ -26,6 +26,7 @@ import { Colors } from '../../constants/Colors';
 import { Typography } from '../../constants/Typography';
 import { Layout } from '../../constants/Layout';
 import { Ionicons } from '@expo/vector-icons';
+import { authRegister, setAuthToken } from '../../services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -95,6 +96,7 @@ export default function RegisterScreen() {
 
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState('');
 
   // Step 1 — account details
   const [name, setName] = useState('');
@@ -169,9 +171,25 @@ export default function RegisterScreen() {
   const handleRegister = async () => {
     if (!validateStep1()) return;
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    setLoading(false);
-    router.replace('/(tabs)');
+    setApiError('');
+    try {
+      const { token } = await authRegister({
+        name,
+        email,
+        password,
+        gender,
+        birthDate: birthDate ? `${birthDate.year}-${String(birthDate.month).padStart(2,'0')}-${String(birthDate.day).padStart(2,'0')}` : null,
+        birthTime: birthTime ? `${birthTime.hour}:${birthTime.minute}` : null,
+        birthCity: city ? `${city.name}, ${city.country}` : null,
+        lagna: lagna?.name ?? null,
+      });
+      setAuthToken(token);
+      router.replace('/(tabs)');
+    } catch (err) {
+      setApiError(err.message ?? 'Registration failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const formatDate = (d) => d ? `${d.day} ${d.month} ${d.year}` : '';
@@ -360,6 +378,10 @@ export default function RegisterScreen() {
                     editable={false}
                   />
 
+
+                  {apiError ? (
+                    <Text style={styles.errorText}>{apiError}</Text>
+                  ) : null}
 
                   <GlowButton
                     label={loading ? 'Aligning your stars...' : 'Begin My Journey ✦'}
