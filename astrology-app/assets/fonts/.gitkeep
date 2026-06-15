@@ -1,0 +1,2 @@
+# Place custom font files (.ttf / .otf) here.
+# They should be referenced in app.json under "expo.fonts" or loaded via expo-font.

@@ -1,0 +1,76 @@
+export const Typography = {
+  h1: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    lineHeight: 42,
+    letterSpacing: -0.5,
+  },
+  h2: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    lineHeight: 34,
+    letterSpacing: -0.3,
+  },
+  h3: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    lineHeight: 28,
+  },
+  h4: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    lineHeight: 24,
+  },
+  body: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#A0A0B8',
+    lineHeight: 22,
+  },
+  bodyWhite: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#FFFFFF',
+    lineHeight: 22,
+  },
+  bodyMd: {
+    fontSize: 15,
+    fontWeight: '400',
+    color: '#A0A0B8',
+    lineHeight: 24,
+  },
+  caption: {
+    fontSize: 11,
+    fontWeight: '400',
+    color: '#5A5A72',
+    lineHeight: 16,
+  },
+  cta: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#A0A0B8',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  tabLabel: {
+    fontSize: 10,
+    fontWeight: '500',
+    letterSpacing: 0.2,
+  },
+  inputText: {
+    fontSize: 15,
+    fontWeight: '400',
+    color: '#FFFFFF',
+  },
+  inputPlaceholder: '#5A5A72',
+};
