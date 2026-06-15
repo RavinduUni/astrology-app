@@ -14,11 +14,11 @@ export default function RootLayout() {
           contentStyle: { backgroundColor: Colors.bg },
         }}
       >
-        <Stack.Screen name="(tabs)" />
+        
         <Stack.Screen name="index" />
         <Stack.Screen name="auth/login" />
         <Stack.Screen name="auth/register" />
-        
+        <Stack.Screen name="(tabs)" />
         <Stack.Screen
           name="screens/ChatScreen"
           options={{ animation: 'slide_from_right' }}
