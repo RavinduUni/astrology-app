@@ -19,7 +19,9 @@ export const register = (req, res) => {
  * Authenticates the user and returns a JWT.
  */
 export const login = (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
+  const { email, password } = req.body;
+  console.log(email, password);
+  res.status(200).json({ message: 'Login successful' });
 };
 
 /**

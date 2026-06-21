@@ -26,7 +26,8 @@ import { Colors } from '../../constants/Colors';
 import { Typography } from '../../constants/Typography';
 import { Layout } from '../../constants/Layout';
 import { Ionicons } from '@expo/vector-icons';
-import { authRegister, setAuthToken } from '../../services/api';
+import { authRegister } from '../../services/auth';
+import { useAuth } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');
 
@@ -93,6 +94,7 @@ const GENDERS = [
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const { login } = useAuth();
 
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -183,7 +185,7 @@ export default function RegisterScreen() {
         birthCity: city ? `${city.name}, ${city.country}` : null,
         lagna: lagna?.name ?? null,
       });
-      setAuthToken(token);
+      await login(token);
       router.replace('/(tabs)');
     } catch (err) {
       setApiError(err.message ?? 'Registration failed. Please try again.');

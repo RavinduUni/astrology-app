@@ -11,8 +11,16 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-app.use("/api",mainRouter);
+app.get("/", (req, res) => {
+  res.send("Server is running...");
+});
 
 app.listen(PORT, () => {
-  console.log(`Cosmiq API server running on port ${PORT}`);
+  console.log(`Server is running on port ${PORT}`);
 });
+
+app.use("/api",mainRouter);
+
+export default app;
+
+

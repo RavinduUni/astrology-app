@@ -25,15 +25,15 @@ import {
 
 const mainRouter = Router();
 
-mainRouter.post("/register",register)
-mainRouter.post("/login",login)
-mainRouter.post("/logout",logout)
+mainRouter.post("/auth/register",register)
+mainRouter.post("/auth/login",login)
+mainRouter.post("/auth/logout",logout)
 
-mainRouter.get("/profile",getProfile)
-mainRouter.put("/profile",updateProfile)
+mainRouter.get("/user/profile",getProfile)
+mainRouter.put("/user/profile",updateProfile)
 
 mainRouter.get("/horoscope",getHoroscope)
-mainRouter.get("/auspicious-times",getAuspiciousTimes)
+mainRouter.get("/horoscope/auspicious-times",getAuspiciousTimes)
 
 mainRouter.get("/reports",getDailyReports)
 mainRouter.get("/reports/:domain",getDomainReports)

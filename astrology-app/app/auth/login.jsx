@@ -25,12 +25,15 @@ import { Colors } from '../../constants/Colors';
 import { Typography } from '../../constants/Typography';
 import { Layout } from '../../constants/Layout';
 import { Ionicons } from '@expo/vector-icons';
-import { authLogin, setAuthToken } from '../../services/api';
+import { authLogin } from '../../services/auth';
+import { useAuth } from '../context/AuthContext';
+
 
 const { width, height } = Dimensions.get('window');
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [emailError, setEmailError] = useState('');
@@ -77,7 +80,7 @@ export default function LoginScreen() {
     setApiError('');
     try {
       const { token } = await authLogin({ email, password });
-      setAuthToken(token);
+      await login(token);
       router.replace('/(tabs)');
     } catch (err) {
       setApiError(err.message ?? 'Login failed. Please try again.');

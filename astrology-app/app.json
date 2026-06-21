@@ -40,8 +40,12 @@
           }
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-secure-store"
     ],
+    "updates": {
+      "enabled": false
+    },
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
@@ -52,12 +56,6 @@
         "projectId": "0e37ac61-bcc8-4bcb-9e38-18e297f01b74"
       }
     },
-    "owner": "ravindusd",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/0e37ac61-bcc8-4bcb-9e38-18e297f01b74"
-    }
+    "owner": "ravindusd"
   }
 }

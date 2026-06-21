@@ -1,7 +1,19 @@
 import { Tabs } from 'expo-router';
 import BottomTabBar from '../../components/layout/BottomTabBar';
+import { useAuth } from '../context/AuthContext';
+import { Redirect } from 'expo-router';
 
 export default function TabsLayout() {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return null;
+  }
+
+  if (!isAuthenticated) {
+    return <Redirect href="/auth/login" />;
+  }
+
   return (
     <Tabs
       tabBar={(props) => <BottomTabBar {...props} />}
