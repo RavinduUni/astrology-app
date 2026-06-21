@@ -99,7 +99,6 @@ function DomainBar({ domain, score, color, delay }) {
         </View>
         <View style={styles.barTrack}>
           <Animated.View style={[styles.barFill, { width: barWidth, backgroundColor: color }]} />
-          <Animated.View style={[styles.barGlow, { left: barWidth, backgroundColor: color }]} />
         </View>
       </View>
     </View>
@@ -241,15 +240,6 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 3,
     opacity: 0.85,
-  },
-  barGlow: {
-    position: 'absolute',
-    top: -4,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginLeft: -5,
-    opacity: 0.8,
   },
 
   // Footer
