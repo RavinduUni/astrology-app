@@ -54,17 +54,21 @@ const userSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    /** Geo-coordinates of the birth city (resolved server-side for calculations) */
-    birthLat: {
+    /**
+     * Geo-coordinates of the birth city.
+     * The frontend sends these as `longitude` / `latitude` / `timeZone`
+     * and they are stored under the same keys for consistency.
+     */
+    latitude: {
       type: Number,
       default: null,
     },
-    birthLng: {
+    longitude: {
       type: Number,
       default: null,
     },
     /** IANA timezone string, e.g. "Asia/Colombo" – resolved from birthCity */
-    birthTimezone: {
+    timeZone: {
       type: String,
       default: null,
     },
@@ -74,12 +78,14 @@ const userSchema = new mongoose.Schema(
       required: true,
     },
 
-    // ── Derived zodiac data (computed server-side at registration) ─────────
+    // ── Derived zodiac data (computed server-side after registration) ───────
+    // These are optional until the zodiac derivation logic is implemented.
     /** Western sun sign, e.g. "Leo" */
     sign: {
       type: String,
-      required: true,
+      default: null,
       enum: [
+        null,
         "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
         "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
       ],
@@ -100,8 +106,9 @@ const userSchema = new mongoose.Schema(
      */
     lagna: {
       type: String,
-      required: true,
+      default: null,
       enum: [
+        null,
         "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
         "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
       ],
