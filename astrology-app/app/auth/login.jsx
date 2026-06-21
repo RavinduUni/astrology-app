@@ -79,8 +79,8 @@ export default function LoginScreen() {
     setLoading(true);
     setApiError('');
     try {
-      const { token } = await authLogin({ email, password });
-      await login(token);
+      const { token, user } = await authLogin({ email, password });
+      await login(token, user);
       router.replace('/(tabs)');
     } catch (err) {
       setApiError(err.message ?? 'Login failed. Please try again.');

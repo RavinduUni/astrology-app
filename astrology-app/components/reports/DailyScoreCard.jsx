@@ -38,8 +38,8 @@ function ScoreRing({ score, color }) {
     outputRange: ['0deg', '360deg'],
   });
 
-  const RING_SIZE = 140;
-  const RING_THICKNESS = 10;
+  const RING_SIZE = 0;
+  const RING_THICKNESS = 0;
 
   return (
     <Animated.View style={[styles.ringWrapper, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>

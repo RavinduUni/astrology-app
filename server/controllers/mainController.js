@@ -11,7 +11,7 @@ import generateToken from "../utils/generateToken.js";
 export const register = async (req, res) => {
   try {
 
-    const { email, password, name, birthDate, birthTime, birthCity, longitude, latitude, timeZone, gender } = req.body;
+    const { email, password, name, birthDate, birthTime, birthCity, lagna, longitude, latitude, timeZone, gender } = req.body;
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -64,7 +64,7 @@ export const login = async (req, res) => {
 
   } catch (error) {
     console.log(error);
-    return res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({ message: error.message || "Internal server error" });
   }
 };
 

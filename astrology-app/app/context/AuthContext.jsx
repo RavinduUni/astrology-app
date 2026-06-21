@@ -52,10 +52,10 @@ export const AuthProvider = ({ children }) => {
    * Call after a successful login / register.
    * Persists the token, decodes user info, and updates auth state.
    */
-  const login = async (newToken) => {
+  const login = async (newToken, user) => {
     await saveToken(newToken);
     setToken(newToken);
-    setUser(decodeToken(newToken));
+    setUser(user);
   };
 
   /**

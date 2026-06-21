@@ -175,7 +175,7 @@ export default function RegisterScreen() {
     setLoading(true);
     setApiError('');
     try {
-      const { token } = await authRegister({
+      const { token, user } = await authRegister({
         name,
         email,
         password,
@@ -185,7 +185,7 @@ export default function RegisterScreen() {
         birthCity: city ? `${city.name}, ${city.country}` : null,
         lagna: lagna?.name ?? null,
       });
-      await login(token);
+      await login(token, user);
       router.replace('/(tabs)');
     } catch (err) {
       setApiError(err.message ?? 'Registration failed. Please try again.');
