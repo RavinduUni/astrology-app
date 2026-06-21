@@ -63,12 +63,12 @@ export default function LoginScreen() {
 
   const validate = () => {
     let valid = true;
-    if (!email.includes('@')) {
+    if (!email || !email.includes('@')) {
       setEmailError('Enter a valid email address');
       valid = false;
     } else setEmailError('');
-    if (password.length < 6) {
-      setPasswordError('Password must be at least 6 characters');
+    if (!password) {
+      setPasswordError('Password is required');
       valid = false;
     } else setPasswordError('');
     return valid;
