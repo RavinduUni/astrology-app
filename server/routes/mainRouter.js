@@ -22,6 +22,7 @@ import {
     getStarbaseArticles,
     getStarbaseArticleById
 } from "../controllers/mainController.js";
+import { verifyToken } from "../middlewares/verifyToken.js";
 
 const mainRouter = Router();
 
@@ -37,5 +38,8 @@ mainRouter.get("/horoscope/auspicious-times",getAuspiciousTimes)
 
 mainRouter.get("/reports",getDailyReports)
 mainRouter.get("/reports/:domain",getDomainReports)
+
+mainRouter.post("/chat/message",verifyToken,chatMessage)
+mainRouter.get("/chat/history",verifyToken,chatHistory)
 
 export default mainRouter;

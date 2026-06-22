@@ -1,6 +1,8 @@
 import User from "../models/User.js";
+import ChatConversation from "../models/ChatConversation.js";
 import bcrypt from "bcryptjs";
 import generateToken from "../utils/generateToken.js";
+import ai from "../configs/ai.js";
 
 /**
  * POST /api/auth/register
@@ -61,7 +63,7 @@ export const login = async (req, res) => {
     const token = generateToken(user._id);
 
     const { password: _, ...userWithoutPassword } = user.toObject();
-    
+
     return res.status(200).json({ message: "Login successful", user: userWithoutPassword, token });
 
   } catch (error) {
@@ -260,6 +262,23 @@ export const shareReport = (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * Builds a concise natal-chart summary string to inject into the AI system prompt.
+ * Keeps the prompt short while giving the model essential birth context.
+ */
+function buildNatalChartForAi(user) {
+  const lines = [
+    `Name      : ${user.name}`,
+    `Gender    : ${user.gender ?? "Not specified"}`,
+    `Birth date: ${user.birthDate ? new Date(user.birthDate).toDateString() : "Unknown"}`,
+    `Birth time: ${user.birthTime ?? "Unknown"}`,
+    `Birth city: ${user.birthCity ?? "Unknown"}`,
+    `Sun sign  : ${user.sign ?? "Unknown"}`,
+    `Lagna     : ${user.lagna ?? "Unknown"}`,
+  ];
+  return lines.join("\n");
+}
+
+/**
  * POST /api/chat/message
  * Headers: Authorization: Bearer <token>
  * Body: { userId, message, conversationId? }
@@ -268,8 +287,110 @@ export const shareReport = (req, res) => {
  * natal chart injected as system context. The backend holds the AI API key.
  * Powers ChatScreen (Cosmiq AI tab).
  */
-export const chatMessage = (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
+export const chatMessage = async (req, res) => {
+
+  const { message, conversationId } = req.body;
+  const userId = req.userId;
+
+  if (!message || !message.trim()) {
+    return res.status(400).json({ error: "Message is required" });
+  }
+
+  let user;
+  try {
+    user = await User.findById(userId);
+    if (!user) return res.status(404).json({ error: "User not found" });
+  } catch (error) {
+    console.error("chatMessage — user lookup error:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+
+  const natalChart = buildNatalChartForAi(user);
+
+  // ── Build the system prompt ───────────────────────────────────────────────
+  const systemPrompt = `You are Cosmiq AI, an expert Vedic astrologer and cosmic guide.
+
+Today's date is: ${new Date().toISOString().slice(0, 10)}
+
+User natal chart:
+${natalChart}
+
+Guidelines:
+1. Be warm, personal, and conversational — you know this person well.
+2. Always address the user by their first name (${user.name.split(" ")[0]}).
+3. Keep answers practical, uplifting, and easy to understand.
+4. Avoid dumping raw calculation data unless the user explicitly asks.
+5. When discussing "today", factor in both the natal chart and current planetary transits.
+6. Use emojis sparingly to keep the tone friendly but not overwhelming.
+7. Keep responses concise — 2-4 short paragraphs unless more depth is requested.`;
+
+  // ── Call the AI ───────────────────────────────────────────────────────────
+  let reply;
+  try {
+    const response = await ai.chat.completions.create({
+      model: process.env.GEMINI_MODEL,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user",   content: message.trim() },
+      ],
+    });
+    reply = response.choices[0]?.message?.content?.trim() || "";
+  } catch (error) {
+    console.error("chatMessage — AI error:", error);
+    return res.status(500).json({ error: "Failed to generate AI response" });
+  }
+
+  // ── Resolve conversationId ────────────────────────────────────────────────
+  // We need the conversationId to include in the response so the client can
+  // send follow-ups in the same thread.  Find or create it synchronously
+  // (just the document shell), then append messages asynchronously.
+  let conv;
+  try {
+    if (conversationId) {
+      conv = await ChatConversation.findOne({ _id: conversationId, userId });
+    }
+    if (!conv) {
+      // Create a new conversation shell — messages will be appended below
+      conv = await ChatConversation.create({
+        userId,
+        title: message.trim().slice(0, 60),
+        natalChartSnapshot: {
+          sign:      user.sign      ?? null,
+          lagna:     user.lagna     ?? null,
+          birthDate: user.birthDate ? new Date(user.birthDate).toISOString().slice(0, 10) : null,
+          birthCity: user.birthCity ?? null,
+        },
+      });
+    }
+  } catch (error) {
+    // Non-fatal: we still reply to the user even if DB creation fails.
+    console.error("chatMessage — conversation create error:", error);
+  }
+
+  // ── Respond to the client immediately ────────────────────────────────────
+  const resolvedConvId = conv?._id?.toString() ?? null;
+  res.json({ reply, conversationId: resolvedConvId, isVoice: false });
+
+  // ── Persist messages asynchronously (fire-and-forget) ────────────────────
+  // We do NOT await this — the client already has the reply.
+  if (conv) {
+    const now = new Date();
+    ChatConversation.findByIdAndUpdate(
+      conv._id,
+      {
+        $push: {
+          messages: {
+            $each: [
+              { role: "user", text: message.trim(), timestamp: now },
+              { role: "ai",   text: reply,           timestamp: new Date(now.getTime() + 1) },
+            ],
+          },
+        },
+        $inc: { messageCount: 2 },
+      },
+      { new: false }
+    ).catch((err) => console.error("chatMessage — async save error:", err));
+  }
 };
 
 /**
@@ -278,8 +399,47 @@ export const chatMessage = (req, res) => {
  * Returns: { messages: [{ id, role: 'user'|'ai', text, timestamp, isVoice }] }
  * Fetches paginated chat history for the ChatScreen to restore on re-open.
  */
-export const chatHistory = (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
+export const chatHistory = async (req, res) => {
+  const userId = req.userId;
+  const { conversationId, limit = 20, offset = 0 } = req.query;
+
+  if (!conversationId) {
+    return res.status(400).json({ message: "conversationId is required" });
+  }
+
+  try {
+    const conv = await ChatConversation.findOne({ _id: conversationId, userId });
+    if (!conv) {
+      return res.status(404).json({ message: "Conversation not found" });
+    }
+
+    const limitNum  = Math.min(Number(limit)  || 20, 100);
+    const offsetNum = Number(offset) || 0;
+
+    // Slice messages array with pagination (newest messages last)
+    const total    = conv.messages.length;
+    const sliced   = conv.messages.slice(offsetNum, offsetNum + limitNum);
+
+    const messages = sliced.map((m) => ({
+      id:        m._id.toString(),
+      role:      m.role,
+      text:      m.text,
+      isVoice:   m.isVoice,
+      duration:  m.duration ?? undefined,
+      timestamp: m.timestamp,
+    }));
+
+    return res.json({
+      conversationId,
+      total,
+      offset:    offsetNum,
+      limit:     limitNum,
+      messages,
+    });
+  } catch (error) {
+    console.error("chatHistory error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

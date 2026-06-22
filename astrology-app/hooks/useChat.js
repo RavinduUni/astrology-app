@@ -15,13 +15,19 @@ const INITIAL_MESSAGES = [
 let msgIdCounter = 100;
 const nextId = () => String(++msgIdCounter);
 
+/**
+ * useChat – powers ChatScreen.
+ *
+ * @param {string|null} [userId]        – optional, passed through for future use
+ * @param {string|null} [conversationId] – optional initial conversation thread ID
+ */
 export function useChat(userId, conversationId) {
-  const [messages, setMessages]         = useState(INITIAL_MESSAGES);
-  const [inputText, setInputText]       = useState('');
-  const [isTyping, setIsTyping]         = useState(false);
-  const [isRecording, setIsRecording]   = useState(false);
+  const [messages, setMessages]               = useState(INITIAL_MESSAGES);
+  const [inputText, setInputText]             = useState('');
+  const [isTyping, setIsTyping]               = useState(false);
+  const [isRecording, setIsRecording]         = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(true);
-  const [error, setError]               = useState(null);
+  const [error, setError]                     = useState(null);
 
   const convIdRef = useRef(conversationId ?? null);
 
@@ -29,6 +35,7 @@ export function useChat(userId, conversationId) {
     setMessages((prev) => [...prev, msg]);
   }, []);
 
+  // ── Send a plain text message ───────────────────────────────────────────
   const sendMessage = useCallback(
     async (overrideText) => {
       const text = (overrideText ?? inputText).trim();
@@ -38,6 +45,7 @@ export function useChat(userId, conversationId) {
       setShowSuggestions(false);
       setError(null);
 
+      // Optimistically add the user bubble
       const userMsg = {
         id: nextId(),
         role: 'user',
@@ -51,17 +59,19 @@ export function useChat(userId, conversationId) {
 
       try {
         const result = await sendChatMessage({
-          userId,
           message: text,
           conversationId: convIdRef.current ?? undefined,
         });
 
+        // Store the conversation ID returned by the server for follow-ups
         if (result.conversationId) convIdRef.current = result.conversationId;
 
+        // Mark user message as delivered/read
         setMessages((prev) =>
           prev.map((m) => (m.id === userMsg.id ? { ...m, status: 'read' } : m))
         );
 
+        // Add the AI reply bubble
         addMessage({
           id: nextId(),
           role: 'ai',
@@ -77,16 +87,26 @@ export function useChat(userId, conversationId) {
           id: nextId(),
           role: 'ai',
           type: 'text',
-          text: 'The stars are momentarily obscured. Please try again shortly.',
+          text: '✨ The stars are momentarily obscured. Please try again in a moment.',
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         });
       } finally {
         setIsTyping(false);
       }
     },
-    [inputText, addMessage, userId]
+    [inputText, addMessage]
   );
 
+  // ── Send a message with attached images (stub — extend when needed) ─────
+  const sendWithImages = useCallback(
+    async (text, _images) => {
+      // For now, fall back to plain text send; images can be handled later.
+      return sendMessage(text);
+    },
+    [sendMessage]
+  );
+
+  // ── Toggle voice recording ───────────────────────────────────────────────
   const toggleRecording = useCallback(() => {
     setIsRecording((r) => !r);
   }, []);
@@ -100,6 +120,7 @@ export function useChat(userId, conversationId) {
     showSuggestions,
     error,
     sendMessage,
+    sendWithImages,
     toggleRecording,
   };
 }
