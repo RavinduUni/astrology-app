@@ -40,6 +40,15 @@ const ZODIAC = {
   Pisces:      { symbol: '♓', element: 'Water', color: '#AA88FF' },
 };
 
+const formatDate = (isoString) => {
+  if (!isoString) return '—';
+  const d = new Date(isoString);
+  return d.toLocaleDateString('en-IN', {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+  });
+};
 // ── Field row for read-only info ──────────────────────────────────────────────
 function InfoRow({ icon, label, value }) {
   return (
@@ -274,7 +283,7 @@ export default function ProfileScreen() {
 
           {/* ── Page header ── */}
           <View style={styles.pageHeader}>
-            <Text style={styles.pageTitle}>✦ My Profile</Text>
+            <Text style={styles.pageTitle}>My Profile</Text>
             {!isEditing ? (
               <TouchableOpacity onPress={handleEdit} style={styles.editBtn} activeOpacity={0.8}>
                 <Ionicons name="pencil" size={15} color={Colors.gold} />
@@ -381,7 +390,7 @@ export default function ProfileScreen() {
             <InfoRow
               icon={<MaterialCommunityIcons name="cake-variant" size={18} color={Colors.gold} />}
               label="Date of Birth"
-              value={displayBirth}
+              value={formatDate(displayBirth)}
             />
             <InfoRow
               icon={<MaterialCommunityIcons name="map-marker-radius" size={18} color={Colors.gold} />}

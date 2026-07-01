@@ -5,6 +5,8 @@ import Report from "../models/Report.js";
 import bcrypt from "bcryptjs";
 import generateToken from "../utils/generateToken.js";
 import ai from "../configs/ai.js";
+import cloudinary from "../configs/cloudinary.js";
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
@@ -433,16 +435,58 @@ export const getProfile = async (req, res) => {
  */
 export const updateProfile = async (req, res) => {
   try {
-    const { name, birthCity, avatarUrl } = req.body;
+    const updates = {};
+    if (req.body.name) updates.name = req.body.name.trim();
+    if (req.body.birthCity) updates.birthCity = req.body.birthCity.trim();
+
+    // Because multer is using memoryStorage, we must use upload_stream with req.file.buffer
+    if (req.file) {
+      const uploadResult = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          {
+            folder: "avatars",
+            resource_type: "image",
+          },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }
+        );
+        stream.end(req.file.buffer);
+      });
+      updates.avatarUrl = uploadResult.secure_url;
+    }
+
     const user = await User.findByIdAndUpdate(
       req.userId,
-      { $set: { name, birthCity, avatarUrl } },
+      { $set: updates },
       { new: true }
     );
     if (!user) return res.status(404).json({ message: "User not found" });
-    return res.json({ message: "Profile updated", user });
+
+    // Format the returned user to match the context state
+    const sign = user.sign || deriveSign(user.birthDate) || "Leo";
+    const signMeta = SIGN_META[sign] || {};
+
+    return res.json({ 
+      message: "Profile updated", 
+      user: {
+        id:         user._id,
+        name:       user.name,
+        email:      user.email,
+        sign,
+        signSymbol: user.signSymbol || signMeta.symbol || null,
+        signColor:  user.signColor  || signMeta.color  || null,
+        lagna:      user.lagna      || null,
+        birthDate:  user.birthDateFormatted || null,
+        birthCity:  user.birthCity  || null,
+        avatarUrl:  user.avatarUrl  || null,
+        isPremium:  user.isPremium  || false,
+      }
+    });
   } catch (error) {
-    return res.status(500).json({ message: "Internal server error" });
+    console.error("Profile update error:", error);
+    return res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
 

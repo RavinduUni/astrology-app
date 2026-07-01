@@ -86,9 +86,7 @@ function CenterTab({ isFocused, onPress }) {
 
   return (
     <View style={centerStyles.wrapper}>
-      {/* Zodiac arc labels */}
-      <ZodiacArcStrip />
-
+    
       {/* Outer glow pulse ring */}
       <Animated.View style={[centerStyles.pulseRing, { opacity: glow }]} />
 
