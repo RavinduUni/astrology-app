@@ -1,19 +1,32 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Image } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
 import { Typography } from '../../constants/Typography';
+import { useAuth } from '../../app/context/AuthContext';
 
-export default function ReportsHeader({ userName = 'Arya Silva', sign = 'Leo', signSymbol = '♌', signColor = '#FFB84A', date = '', onShare }) {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+export default function ReportsHeader({
+  userName = 'Stargazer',
+  sign = '—',
+  signSymbol = '✦',
+  signColor = '#FFB84A',
+  date = '',
+  onShare,
+}) {
+  const router = useRouter();
+  const { user } = useAuth();
+  const fadeAnim  = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-14)).current;
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+      Animated.timing(fadeAnim,  { toValue: 1, duration: 600, useNativeDriver: true }),
       Animated.spring(slideAnim, { toValue: 0, tension: 55, friction: 11, useNativeDriver: true }),
     ]).start();
   }, []);
+
+  const avatarUrl = user?.avatarUrl || null;
 
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
@@ -35,9 +48,19 @@ export default function ReportsHeader({ userName = 'Arya Silva', sign = 'Leo', s
         <TouchableOpacity style={styles.iconBtn} onPress={onShare} activeOpacity={0.7}>
           <Ionicons name="share-outline" size={20} color={Colors.textSecondary} />
         </TouchableOpacity>
-        <View style={styles.avatar}>
-          <Ionicons name="person" size={22} color={Colors.white} />
-        </View>
+
+        {/* Avatar — tappable, navigates to profile */}
+        <TouchableOpacity
+          onPress={() => router.push('/(tabs)/profile')}
+          style={styles.avatar}
+          activeOpacity={0.8}
+        >
+          {avatarUrl ? (
+            <Image source={{ uri: avatarUrl }} style={styles.avatarImg} />
+          ) : (
+            <Ionicons name="person" size={22} color={Colors.white} />
+          )}
+        </TouchableOpacity>
       </View>
     </Animated.View>
   );
@@ -73,7 +96,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   signSymbol: { fontSize: 13, fontWeight: '700' },
-  signName: { fontSize: 11, fontWeight: '700', letterSpacing: 0.3 },
+  signName:   { fontSize: 11, fontWeight: '700', letterSpacing: 0.3 },
   subtitle: {
     fontSize: 13,
     color: Colors.textMuted,
@@ -107,9 +130,15 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    borderWidth: 2,
+    borderColor: Colors.borderGold,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarImg: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
 });

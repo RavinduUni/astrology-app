@@ -87,6 +87,14 @@ export const AuthProvider = ({ children }) => {
   };
 
   /**
+   * Merges updated user fields into context.
+   * Call this after a successful profile save so headers update instantly.
+   */
+  const updateUserData = (updatedFields) => {
+    setUser((prev) => (prev ? { ...prev, ...updatedFields } : updatedFields));
+  };
+
+  /**
    * Call after a successful login / register.
    * Persists the token, decodes user info, updates auth state,
    * and triggers a single dashboard data fetch.
@@ -130,6 +138,7 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated: !!token,
         login,
         logout,
+        updateUserData,
         // Dashboard data
         homeData,
         reportsData,

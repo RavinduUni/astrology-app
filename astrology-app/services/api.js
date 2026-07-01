@@ -85,11 +85,52 @@ export const put = (path, body) => request('PUT', path, body);
 export const getProfile = async () => await get('/api/user/profile');
 
 /**
- * Update editable profile fields.
- * @param {{ name?: string, birthCity?: string, avatarUrl?: string }} updates
- * @returns {UserProfile}
+ * Update editable text fields on the user's profile.
+ * @param {{ name?: string, birthCity?: string }} updates
+ * @returns {{ message: string, user: UserProfile }}
  */
-export const updateProfile = async (updates) => await put('/api/user/profile', updates);
+export const updateUserProfile = async (updates) => await put('/api/user/profile', updates);
+
+/**
+ * Upload a profile avatar image.
+ * Uses multipart/form-data — the token is read from SecureStore.
+ * @param {string} imageUri  — local file URI from expo-image-picker
+ * @param {string} mimeType  — e.g. 'image/jpeg'
+ * @returns {{ message: string, user: UserProfile }}
+ */
+export const uploadProfileImage = async (imageUri, mimeType = 'image/jpeg') => {
+  const token = await SecureStore.getItemAsync('token');
+  const formData = new FormData();
+  const filename = imageUri.split('/').pop();
+  formData.append('avatar', { uri: imageUri, name: filename, type: mimeType });
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30_000);
+  let res;
+  try {
+    res = await fetch(`${BASE_URL}/api/user/profile`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData,
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err.name === 'AbortError') throw new Error('Upload timed out.');
+    throw new Error('Upload failed. Check your connection.');
+  } finally {
+    clearTimeout(timeoutId);
+  }
+  if (res.status === 401) {
+    if (_logoutCallback) _logoutCallback();
+    throw new Error('Session expired. Please log in again.');
+  }
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message ?? `HTTP ${res.status}`);
+  return json;
+};
 
 // ── Dashboard (new single-call endpoints — use these in screens) ─────────────
 
