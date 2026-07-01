@@ -33,7 +33,7 @@ export default function ReportsHeader({
       {/* Left block */}
       <View style={styles.left}>
         <View style={styles.titleRow}>
-          <Text style={styles.title}>✦ Reports</Text>
+          <Text style={styles.title}>Reports</Text>
           <View style={[styles.signBadge, { borderColor: `${signColor}55`, backgroundColor: `${signColor}18` }]}>
             <Text style={[styles.signSymbol, { color: signColor }]}>{signSymbol}</Text>
             <Text style={[styles.signName, { color: signColor }]}>{sign}</Text>

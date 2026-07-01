@@ -344,7 +344,7 @@ export const register = async (req, res) => {
 
   } catch (error) {
     console.log(error);
-    return res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({ message: error.message || "Internal server error" });
   }
 };
 
@@ -426,7 +426,7 @@ export const getProfile = async (req, res) => {
     });
   } catch (error) {
     console.error("getProfile error:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({ message: error.message || "Internal server error" });
   }
 };
 
