@@ -315,6 +315,12 @@ export const register = async (req, res) => {
     const sign = birthDate ? deriveSign(new Date(birthDate)) : null;
     const signMeta = sign ? (SIGN_META[sign] || {}) : {};
 
+    // Extract English sign name from "Vrischika (Scorpio)" to match the enum
+    let parsedLagna = lagna;
+    if (parsedLagna && parsedLagna.includes('(')) {
+      parsedLagna = parsedLagna.match(/\(([^)]+)\)/)?.[1]?.trim() || parsedLagna;
+    }
+
     const user = await User.create({
       email,
       password: hashPassword,
@@ -329,7 +335,7 @@ export const register = async (req, res) => {
       sign,
       signSymbol: signMeta.symbol || null,
       signColor: signMeta.color || null,
-      lagna: lagna || null,
+      lagna: parsedLagna,
     });
 
     const token = generateToken(user._id);
