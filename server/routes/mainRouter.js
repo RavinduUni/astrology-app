@@ -26,6 +26,7 @@ import {
     getStarbaseArticleById
 } from "../controllers/mainController.js";
 import { verifyToken } from "../middlewares/verifyToken.js";
+import upload from "../configs/multer.js";
 
 const mainRouter = Router();
 
@@ -36,7 +37,7 @@ mainRouter.post("/auth/logout", logout)
 
 // ── User ─────────────────────────────────────────────────────────────────────
 mainRouter.get("/user/profile", verifyToken, getProfile)
-mainRouter.put("/user/profile", verifyToken, updateProfile)
+mainRouter.put("/user/profile", verifyToken, upload.single('avatar'), updateProfile)
 
 // ── Dashboard (new single-call endpoints) ────────────────────────────────────
 mainRouter.get("/dashboard/home", verifyToken, getHomeDashboard)

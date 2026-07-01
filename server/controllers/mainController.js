@@ -19,48 +19,48 @@ function todayKey() {
 function deriveSign(birthDate) {
   const d = new Date(birthDate);
   const month = d.getUTCMonth() + 1; // 1-based
-  const day   = d.getUTCDate();
-  if ((month === 3  && day >= 21) || (month === 4  && day <= 19)) return "Aries";
-  if ((month === 4  && day >= 20) || (month === 5  && day <= 20)) return "Taurus";
-  if ((month === 5  && day >= 21) || (month === 6  && day <= 20)) return "Gemini";
-  if ((month === 6  && day >= 21) || (month === 7  && day <= 22)) return "Cancer";
-  if ((month === 7  && day >= 23) || (month === 8  && day <= 22)) return "Leo";
-  if ((month === 8  && day >= 23) || (month === 9  && day <= 22)) return "Virgo";
-  if ((month === 9  && day >= 23) || (month === 10 && day <= 22)) return "Libra";
+  const day = d.getUTCDate();
+  if ((month === 3 && day >= 21) || (month === 4 && day <= 19)) return "Aries";
+  if ((month === 4 && day >= 20) || (month === 5 && day <= 20)) return "Taurus";
+  if ((month === 5 && day >= 21) || (month === 6 && day <= 20)) return "Gemini";
+  if ((month === 6 && day >= 21) || (month === 7 && day <= 22)) return "Cancer";
+  if ((month === 7 && day >= 23) || (month === 8 && day <= 22)) return "Leo";
+  if ((month === 8 && day >= 23) || (month === 9 && day <= 22)) return "Virgo";
+  if ((month === 9 && day >= 23) || (month === 10 && day <= 22)) return "Libra";
   if ((month === 10 && day >= 23) || (month === 11 && day <= 21)) return "Scorpio";
   if ((month === 11 && day >= 22) || (month === 12 && day <= 21)) return "Sagittarius";
-  if ((month === 12 && day >= 22) || (month === 1  && day <= 19)) return "Capricorn";
-  if ((month === 1  && day >= 20) || (month === 2  && day <= 18)) return "Aquarius";
+  if ((month === 12 && day >= 22) || (month === 1 && day <= 19)) return "Capricorn";
+  if ((month === 1 && day >= 20) || (month === 2 && day <= 18)) return "Aquarius";
   return "Pisces";
 }
 
 const SIGN_META = {
-  Aries:       { symbol: "♈", color: "#FF6B4A" },
-  Taurus:      { symbol: "♉", color: "#4AFF8C" },
-  Gemini:      { symbol: "♊", color: "#4AD4FF" },
-  Cancer:      { symbol: "♋", color: "#4A8CFF" },
-  Leo:         { symbol: "♌", color: "#FFB84A" },
-  Virgo:       { symbol: "♍", color: "#8CFF4A" },
-  Libra:       { symbol: "♎", color: "#D4A4FF" },
-  Scorpio:     { symbol: "♏", color: "#FF4A8C" },
+  Aries: { symbol: "♈", color: "#FF6B4A" },
+  Taurus: { symbol: "♉", color: "#4AFF8C" },
+  Gemini: { symbol: "♊", color: "#4AD4FF" },
+  Cancer: { symbol: "♋", color: "#4A8CFF" },
+  Leo: { symbol: "♌", color: "#FFB84A" },
+  Virgo: { symbol: "♍", color: "#8CFF4A" },
+  Libra: { symbol: "♎", color: "#D4A4FF" },
+  Scorpio: { symbol: "♏", color: "#FF4A8C" },
   Sagittarius: { symbol: "♐", color: "#FF884A" },
-  Capricorn:   { symbol: "♑", color: "#8CAAFF" },
-  Aquarius:    { symbol: "♒", color: "#4AFFEE" },
-  Pisces:      { symbol: "♓", color: "#AA88FF" },
+  Capricorn: { symbol: "♑", color: "#8CAAFF" },
+  Aquarius: { symbol: "♒", color: "#4AFFEE" },
+  Pisces: { symbol: "♓", color: "#AA88FF" },
 };
 
 const DOMAIN_META = {
-  love:   { label: "Love & Relationships", color: "#FF6B8A" },
-  career: { label: "Career & Success",     color: "#4AD4FF" },
-  health: { label: "Health & Vitality",    color: "#4AFF8C" },
-  wealth: { label: "Wealth & Finance",     color: "#C8973A" },
+  love: { label: "Love & Relationships", color: "#FF6B8A" },
+  career: { label: "Career & Success", color: "#4AD4FF" },
+  health: { label: "Health & Vitality", color: "#4AFF8C" },
+  wealth: { label: "Wealth & Finance", color: "#C8973A" },
 };
 
 const REMEDY_COLORS = {
-  Gemstone:    "#FF6B8A",
+  Gemstone: "#FF6B8A",
   "Lucky Color": "#FFB84A",
-  Fasting:     "#4AFF8C",
-  Mantra:      "#C8973A",
+  Fasting: "#4AFF8C",
+  Mantra: "#C8973A",
 };
 
 /**
@@ -72,7 +72,7 @@ async function callAiForDashboard(user, date) {
     ? new Date(user.birthDate).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
     : "Unknown";
 
-  const sign  = user.sign  || deriveSign(user.birthDate) || "Leo";
+  const sign = user.sign || deriveSign(user.birthDate) || "Leo";
   const lagna = user.lagna || "Unknown";
   const currentYear = new Date().getFullYear();
 
@@ -178,10 +178,10 @@ Return EXACTLY this JSON structure:
       { "type": "Mantra",       "value": "<mantra name>",          "desc": "short benefit",    "color": "#C8973A", "fullMantra": "<Devanagari text>" }
     ],
     "lifeTimeline": [
-      { "year": "${currentYear}–${(currentYear+1).toString().slice(2)}",       "label": "short key theme for this year" },
-      { "year": "${currentYear+1}–${(currentYear+2).toString().slice(2)}",     "label": "short key theme" },
-      { "year": "${currentYear+2}–${(currentYear+3).toString().slice(2)}",     "label": "short key theme" },
-      { "year": "${currentYear+3}+",                                           "label": "short long-term outlook" }
+      { "year": "${currentYear}–${(currentYear + 1).toString().slice(2)}",       "label": "short key theme for this year" },
+      { "year": "${currentYear + 1}–${(currentYear + 2).toString().slice(2)}",     "label": "short key theme" },
+      { "year": "${currentYear + 2}–${(currentYear + 3).toString().slice(2)}",     "label": "short key theme" },
+      { "year": "${currentYear + 3}+",                                           "label": "short long-term outlook" }
     ]
   }
 }`;
@@ -231,15 +231,15 @@ async function generateDashboardData(user, date) {
       $setOnInsert: {
         date,
         sign,
-        summary:     h.summary     || "",
+        summary: h.summary || "",
         luckyNumber: h.luckyNumber || 7,
-        luckyColor:  h.luckyColor  || { name: "Gold", hex: "#C8973A", emoji: "🟡" },
-        luckyTime:   h.luckyTime   || "06:00 – 07:30 AM",
-        energy:      h.energy      ?? 70,
-        mood:        h.mood        || "Balanced",
-        moonPhase:   h.moonPhase   || "Waxing",
-        moonEmoji:   h.moonEmoji   || "🌖",
-        planets:     h.planets     || [],
+        luckyColor: h.luckyColor || { name: "Gold", hex: "#C8973A", emoji: "🟡" },
+        luckyTime: h.luckyTime || "06:00 – 07:30 AM",
+        energy: h.energy ?? 70,
+        mood: h.mood || "Balanced",
+        moonPhase: h.moonPhase || "Waxing",
+        moonEmoji: h.moonEmoji || "🌖",
+        planets: h.planets || [],
       },
     },
     { upsert: true, new: true }
@@ -247,21 +247,21 @@ async function generateDashboardData(user, date) {
 
   // ── 4. Save personalised report (per user — upsert) ──────────────────────
   const domainsWithMeta = (r.domains || []).map((d) => ({
-    id:        d.id,
-    label:     DOMAIN_META[d.id]?.label || d.id,
-    color:     DOMAIN_META[d.id]?.color || "#888888",
-    score:     d.score || 70,
-    summary:   d.summary || "",
-    detail:    d.summary || "",   // keep detail same as summary (no long text)
+    id: d.id,
+    label: DOMAIN_META[d.id]?.label || d.id,
+    color: DOMAIN_META[d.id]?.color || "#888888",
+    score: d.score || 70,
+    summary: d.summary || "",
+    detail: d.summary || "",   // keep detail same as summary (no long text)
     subScores: d.subScores || [],
-    tips:      d.tips || [],
+    tips: d.tips || [],
   }));
 
   const remediesWithColor = (r.remedies || []).map((rem) => ({
-    type:       rem.type,
-    value:      rem.value,
-    desc:       rem.desc,
-    color:      REMEDY_COLORS[rem.type] || rem.color || "#888888",
+    type: rem.type,
+    value: rem.value,
+    desc: rem.desc,
+    color: REMEDY_COLORS[rem.type] || rem.color || "#888888",
     fullMantra: rem.fullMantra || null,
   }));
 
@@ -269,18 +269,18 @@ async function generateDashboardData(user, date) {
     { userId: user._id, reportType: "daily", periodKey: date },
     {
       $setOnInsert: {
-        userId:          user._id,
-        reportType:      "daily",
-        periodKey:       date,
-        cosmicScore:     r.cosmicScore  ?? 70,
-        cosmicLabel:     r.cosmicLabel  || "Moderate",
-        headline:        r.headline     || "",
-        summary:         r.headline     || "",
-        domains:         domainsWithMeta,
-        planets:         h.planets      || [],
+        userId: user._id,
+        reportType: "daily",
+        periodKey: date,
+        cosmicScore: r.cosmicScore ?? 70,
+        cosmicLabel: r.cosmicLabel || "Moderate",
+        headline: r.headline || "",
+        summary: r.headline || "",
+        domains: domainsWithMeta,
+        planets: h.planets || [],
         auspiciousSlots: r.auspiciousSlots || [],
-        remedies:        remediesWithColor,
-        yearlyForecast:  r.lifeTimeline || [],
+        remedies: remediesWithColor,
+        yearlyForecast: r.lifeTimeline || [],
       },
     },
     { upsert: true, new: true }
@@ -310,8 +310,8 @@ export const register = async (req, res) => {
     const hashPassword = await bcrypt.hash(password, 10);
 
     // Derive sign from birthDate
-    const sign      = birthDate ? deriveSign(new Date(birthDate)) : null;
-    const signMeta  = sign ? (SIGN_META[sign] || {}) : {};
+    const sign = birthDate ? deriveSign(new Date(birthDate)) : null;
+    const signMeta = sign ? (SIGN_META[sign] || {}) : {};
 
     const user = await User.create({
       email,
@@ -326,8 +326,8 @@ export const register = async (req, res) => {
       gender,
       sign,
       signSymbol: signMeta.symbol || null,
-      signColor:  signMeta.color  || null,
-      lagna:      lagna || null,
+      signColor: signMeta.color || null,
+      lagna: lagna || null,
     });
 
     const token = generateToken(user._id);
@@ -406,21 +406,21 @@ export const getProfile = async (req, res) => {
     const user = await User.findById(req.userId);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    const sign     = user.sign || deriveSign(user.birthDate) || "Leo";
+    const sign = user.sign || deriveSign(user.birthDate) || "Leo";
     const signMeta = SIGN_META[sign] || {};
 
     return res.json({
-      id:          user._id,
-      name:        user.name,
-      email:       user.email,
+      id: user._id,
+      name: user.name,
+      email: user.email,
       sign,
-      signSymbol:  user.signSymbol  || signMeta.symbol || null,
-      signColor:   user.signColor   || signMeta.color  || null,
-      lagna:       user.lagna       || null,
-      birthDate:   user.birthDateFormatted || null,
-      birthCity:   user.birthCity   || null,
-      avatarUrl:   user.avatarUrl   || null,
-      isPremium:   user.isPremium   || false,
+      signSymbol: user.signSymbol || signMeta.symbol || null,
+      signColor: user.signColor || signMeta.color || null,
+      lagna: user.lagna || null,
+      birthDate: user.birthDateFormatted || null,
+      birthCity: user.birthCity || null,
+      avatarUrl: user.avatarUrl || null,
+      isPremium: user.isPremium || false,
     });
   } catch (error) {
     console.error("getProfile error:", error);
@@ -459,7 +459,7 @@ export const updateProfile = async (req, res) => {
 export const getHomeDashboard = async (req, res) => {
   try {
     const userId = req.userId;
-    const user   = await User.findById(userId);
+    const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: "User not found" });
 
     const date = todayKey();
@@ -479,17 +479,17 @@ export const getHomeDashboard = async (req, res) => {
     return res.json({
       date,
       sign,
-      signSymbol:  user.signSymbol  || signMeta.symbol || null,
-      signColor:   user.signColor   || signMeta.color  || null,
-      summary:     horoDoc.summary,
+      signSymbol: user.signSymbol || signMeta.symbol || null,
+      signColor: user.signColor || signMeta.color || null,
+      summary: horoDoc.summary,
       luckyNumber: horoDoc.luckyNumber,
-      luckyColor:  horoDoc.luckyColor,
-      luckyTime:   horoDoc.luckyTime,
-      energy:      horoDoc.energy,
-      mood:        horoDoc.mood,
-      moonPhase:   horoDoc.moonPhase,
-      moonEmoji:   horoDoc.moonEmoji,
-      planets:     horoDoc.planets,
+      luckyColor: horoDoc.luckyColor,
+      luckyTime: horoDoc.luckyTime,
+      energy: horoDoc.energy,
+      mood: horoDoc.mood,
+      moonPhase: horoDoc.moonPhase,
+      moonEmoji: horoDoc.moonEmoji,
+      planets: horoDoc.planets,
     });
   } catch (error) {
     console.error("getHomeDashboard error:", error);
@@ -505,7 +505,7 @@ export const getHomeDashboard = async (req, res) => {
 export const getReportsDashboard = async (req, res) => {
   try {
     const userId = req.userId;
-    const user   = await User.findById(userId);
+    const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: "User not found" });
 
     const date = todayKey();
@@ -525,24 +525,24 @@ export const getReportsDashboard = async (req, res) => {
       date,
       // User profile data (for the header + profile strip)
       userProfile: {
-        name:      user.name,
+        name: user.name,
         sign,
         signSymbol: user.signSymbol || signMeta.symbol || null,
-        signColor:  user.signColor  || signMeta.color  || null,
-        lagna:      user.lagna      || null,
-        birthDate:  user.birthDateFormatted || null,
-        birthCity:  user.birthCity  || null,
+        signColor: user.signColor || signMeta.color || null,
+        lagna: user.lagna || null,
+        birthDate: user.birthDateFormatted || null,
+        birthCity: user.birthCity || null,
       },
       // Report data
-      cosmicScore:     reportDoc.cosmicScore,
-      cosmicLabel:     reportDoc.cosmicLabel,
-      headline:        reportDoc.headline,
-      summary:         reportDoc.summary,
-      domains:         reportDoc.domains,
-      planets:         reportDoc.planets,
+      cosmicScore: reportDoc.cosmicScore,
+      cosmicLabel: reportDoc.cosmicLabel,
+      headline: reportDoc.headline,
+      summary: reportDoc.summary,
+      domains: reportDoc.domains,
+      planets: reportDoc.planets,
       auspiciousSlots: reportDoc.auspiciousSlots,
-      remedies:        reportDoc.remedies,
-      lifeTimeline:    reportDoc.yearlyForecast,
+      remedies: reportDoc.remedies,
+      lifeTimeline: reportDoc.yearlyForecast,
     });
   } catch (error) {
     console.error("getReportsDashboard error:", error);
@@ -581,16 +581,16 @@ export const getAuspiciousTimes = async (req, res) => {
 // REPORTS ENDPOINTS (legacy stubs → delegate)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const getDailyReports       = (req, res) => getReportsDashboard(req, res);
-export const getDomainReports      = (req, res) => getReportsDashboard(req, res);
-export const getPlanetTransits     = (req, res) => getHomeDashboard(req, res);
+export const getDailyReports = (req, res) => getReportsDashboard(req, res);
+export const getDomainReports = (req, res) => getReportsDashboard(req, res);
+export const getPlanetTransits = (req, res) => getHomeDashboard(req, res);
 export const getAuspiciousTimingsReport = (req, res) => getAuspiciousTimes(req, res);
 
 export const getRemedies = async (req, res) => {
   try {
     const userId = req.userId;
-    const date   = req.query.date || todayKey();
-    const user   = await User.findById(userId);
+    const date = req.query.date || todayKey();
+    const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: "User not found" });
     let reportDoc = await Report.findOne({ userId, reportType: "daily", periodKey: date });
     if (!reportDoc) {
@@ -606,8 +606,8 @@ export const getRemedies = async (req, res) => {
 export const getYearlyReports = async (req, res) => {
   try {
     const userId = req.userId;
-    const year   = req.query.year || new Date().getFullYear().toString();
-    const user   = await User.findById(userId);
+    const year = req.query.year || new Date().getFullYear().toString();
+    const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: "User not found" });
     let reportDoc = await Report.findOne({ userId, reportType: "daily", periodKey: todayKey() });
     if (!reportDoc) {
@@ -620,7 +620,7 @@ export const getYearlyReports = async (req, res) => {
   }
 };
 
-export const getWeeklyReports  = (req, res) => res.status(501).json({ message: "Premium feature" });
+export const getWeeklyReports = (req, res) => res.status(501).json({ message: "Premium feature" });
 export const getMonthlyReports = (req, res) => res.status(501).json({ message: "Premium feature" });
 
 export const shareReport = async (req, res) => {
@@ -699,7 +699,7 @@ Guidelines:
       model: process.env.GEMINI_MODEL,
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user",   content: message.trim() },
+        { role: "user", content: message.trim() },
       ],
     });
     reply = response.choices[0]?.message?.content?.trim() || "";
@@ -718,8 +718,8 @@ Guidelines:
         userId,
         title: message.trim().slice(0, 60),
         natalChartSnapshot: {
-          sign:      user.sign      ?? null,
-          lagna:     user.lagna     ?? null,
+          sign: user.sign ?? null,
+          lagna: user.lagna ?? null,
           birthDate: user.birthDate ? new Date(user.birthDate).toISOString().slice(0, 10) : null,
           birthCity: user.birthCity ?? null,
         },
@@ -741,7 +741,7 @@ Guidelines:
           messages: {
             $each: [
               { role: "user", text: message.trim(), timestamp: now },
-              { role: "ai",   text: reply,           timestamp: new Date(now.getTime() + 1) },
+              { role: "ai", text: reply, timestamp: new Date(now.getTime() + 1) },
             ],
           },
         },
@@ -769,18 +769,18 @@ export const chatHistory = async (req, res) => {
       return res.status(404).json({ message: "Conversation not found" });
     }
 
-    const limitNum  = Math.min(Number(limit)  || 20, 100);
+    const limitNum = Math.min(Number(limit) || 20, 100);
     const offsetNum = Number(offset) || 0;
 
-    const total   = conv.messages.length;
-    const sliced  = conv.messages.slice(offsetNum, offsetNum + limitNum);
+    const total = conv.messages.length;
+    const sliced = conv.messages.slice(offsetNum, offsetNum + limitNum);
 
     const messages = sliced.map((m) => ({
-      id:        m._id.toString(),
-      role:      m.role,
-      text:      m.text,
-      isVoice:   m.isVoice,
-      duration:  m.duration ?? undefined,
+      id: m._id.toString(),
+      role: m.role,
+      text: m.text,
+      isVoice: m.isVoice,
+      duration: m.duration ?? undefined,
       timestamp: m.timestamp,
     }));
 
@@ -795,9 +795,9 @@ export const chatHistory = async (req, res) => {
 // ASTROLOGERS / NOTIFICATIONS / STARBASE (stubs — not in scope)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const getAstrologers          = (req, res) => res.status(501).json({ message: "Not implemented" });
-export const getAstrologerById       = (req, res) => res.status(501).json({ message: "Not implemented" });
-export const getNotifications        = (req, res) => res.status(501).json({ message: "Not implemented" });
-export const markNotificationAsRead  = (req, res) => res.status(501).json({ message: "Not implemented" });
-export const getStarbaseArticles     = (req, res) => res.status(501).json({ message: "Not implemented" });
-export const getStarbaseArticleById  = (req, res) => res.status(501).json({ message: "Not implemented" });
+export const getAstrologers = (req, res) => res.status(501).json({ message: "Not implemented" });
+export const getAstrologerById = (req, res) => res.status(501).json({ message: "Not implemented" });
+export const getNotifications = (req, res) => res.status(501).json({ message: "Not implemented" });
+export const markNotificationAsRead = (req, res) => res.status(501).json({ message: "Not implemented" });
+export const getStarbaseArticles = (req, res) => res.status(501).json({ message: "Not implemented" });
+export const getStarbaseArticleById = (req, res) => res.status(501).json({ message: "Not implemented" });
