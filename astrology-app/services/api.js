@@ -91,36 +91,36 @@ export const getProfile = async () => await get('/api/user/profile');
  */
 export const updateProfile = async (updates) => await put('/api/user/profile', updates);
 
-// ── Horoscope (Home tab) ──────────────────────────────────────────────────────
+// ── Dashboard (new single-call endpoints — use these in screens) ─────────────
+
+/**
+ * All data needed for the Home tab in a single request.
+ * Cache-first: served instantly from DB if already generated for today.
+ * @returns {{ date, sign, signSymbol, signColor, summary, luckyNumber, luckyColor,
+ *             luckyTime, energy, mood, moonPhase, moonEmoji, planets }}
+ */
+export const getHomeDashboard = async () => await get('/api/dashboard/home');
+
+/**
+ * All data needed for the Reports tab in a single request.
+ * Cache-first: served instantly from DB if already generated for today.
+ * @returns {{ date, userProfile, cosmicScore, cosmicLabel, headline, summary,
+ *             domains, planets, auspiciousSlots, remedies, lifeTimeline }}
+ */
+export const getReportsDashboard = async () => await get('/api/dashboard/reports');
+
+// ── Horoscope (Home tab) — legacy, kept for reference ─────────────────────────
 
 /**
  * Daily horoscope for the Home tab.
  * @param {{ userId: string, date: string }} params   date format: YYYY-MM-DD
- * @returns {{
- *   date: string,
- *   sign: string,
- *   summary: string,
- *   luckyNumber: number,
- *   luckyColor: { name: string, hex: string },
- *   luckyTime: string,
- *   energy: number,        // 0–100
- *   mood: string,
- *   moonPhase: string,
- *   moonEmoji: string,
- *   planets: Planet[]
- * }}
- *
- * Planet shape: { name, symbol, position, house, influence: 'positive'|'neutral'|'caution' }
  */
 export const getDailyHoroscope = async ({ userId, date }) =>
   await get(`/api/horoscope/daily?userId=${userId}&date=${date}`);
 
 /**
- * Auspicious time slots for the day (Home + Reports tab).
+ * Auspicious time slots for the day.
  * @param {{ userId: string, date: string }} params
- * @returns {AuspiciousSlot[]}
- *
- * AuspiciousSlot shape: { time: string, type: 'best'|'good'|'avoid', activity: string }
  */
 export const getAuspiciousTimes = async ({ userId, date }) =>
   await get(`/api/horoscope/auspicious-times?userId=${userId}&date=${date}`);

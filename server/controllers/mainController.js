@@ -1,18 +1,305 @@
 import User from "../models/User.js";
 import ChatConversation from "../models/ChatConversation.js";
+import DailyHoroscope from "../models/DailyHoroscope.js";
+import Report from "../models/Report.js";
 import bcrypt from "bcryptjs";
 import generateToken from "../utils/generateToken.js";
 import ai from "../configs/ai.js";
 
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Today's date as YYYY-MM-DD in UTC */
+function todayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/** Derive zodiac sign from a Date object (Western sun sign) */
+function deriveSign(birthDate) {
+  const d = new Date(birthDate);
+  const month = d.getUTCMonth() + 1; // 1-based
+  const day   = d.getUTCDate();
+  if ((month === 3  && day >= 21) || (month === 4  && day <= 19)) return "Aries";
+  if ((month === 4  && day >= 20) || (month === 5  && day <= 20)) return "Taurus";
+  if ((month === 5  && day >= 21) || (month === 6  && day <= 20)) return "Gemini";
+  if ((month === 6  && day >= 21) || (month === 7  && day <= 22)) return "Cancer";
+  if ((month === 7  && day >= 23) || (month === 8  && day <= 22)) return "Leo";
+  if ((month === 8  && day >= 23) || (month === 9  && day <= 22)) return "Virgo";
+  if ((month === 9  && day >= 23) || (month === 10 && day <= 22)) return "Libra";
+  if ((month === 10 && day >= 23) || (month === 11 && day <= 21)) return "Scorpio";
+  if ((month === 11 && day >= 22) || (month === 12 && day <= 21)) return "Sagittarius";
+  if ((month === 12 && day >= 22) || (month === 1  && day <= 19)) return "Capricorn";
+  if ((month === 1  && day >= 20) || (month === 2  && day <= 18)) return "Aquarius";
+  return "Pisces";
+}
+
+const SIGN_META = {
+  Aries:       { symbol: "♈", color: "#FF6B4A" },
+  Taurus:      { symbol: "♉", color: "#4AFF8C" },
+  Gemini:      { symbol: "♊", color: "#4AD4FF" },
+  Cancer:      { symbol: "♋", color: "#4A8CFF" },
+  Leo:         { symbol: "♌", color: "#FFB84A" },
+  Virgo:       { symbol: "♍", color: "#8CFF4A" },
+  Libra:       { symbol: "♎", color: "#D4A4FF" },
+  Scorpio:     { symbol: "♏", color: "#FF4A8C" },
+  Sagittarius: { symbol: "♐", color: "#FF884A" },
+  Capricorn:   { symbol: "♑", color: "#8CAAFF" },
+  Aquarius:    { symbol: "♒", color: "#4AFFEE" },
+  Pisces:      { symbol: "♓", color: "#AA88FF" },
+};
+
+const DOMAIN_META = {
+  love:   { label: "Love & Relationships", color: "#FF6B8A" },
+  career: { label: "Career & Success",     color: "#4AD4FF" },
+  health: { label: "Health & Vitality",    color: "#4AFF8C" },
+  wealth: { label: "Wealth & Finance",     color: "#C8973A" },
+};
+
+const REMEDY_COLORS = {
+  Gemstone:    "#FF6B8A",
+  "Lucky Color": "#FFB84A",
+  Fasting:     "#4AFF8C",
+  Mantra:      "#C8973A",
+};
+
+/**
+ * Calls the AI once to generate a full day's data for a user.
+ * Returns parsed JSON or throws.
+ */
+async function callAiForDashboard(user, date) {
+  const birthDateStr = user.birthDate
+    ? new Date(user.birthDate).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
+    : "Unknown";
+
+  const sign  = user.sign  || deriveSign(user.birthDate) || "Leo";
+  const lagna = user.lagna || "Unknown";
+  const currentYear = new Date().getFullYear();
+
+  const prompt = `You are an expert Vedic astrology engine. Respond ONLY with valid JSON — no markdown, no explanation.
+
+User profile:
+Name: ${user.name}
+Gender: ${user.gender ?? "Not specified"}
+Born: ${birthDateStr} at ${user.birthTime ?? "unknown time"}
+City: ${user.birthCity ?? "Unknown"}
+Sun Sign: ${sign}
+Lagna (Ascendant): ${lagna}
+Today: ${date}
+
+Generate a personalised daily Vedic astrology reading based ONLY on this user's birth data and today's date.
+Keep ALL string values short (under 15 words each). Do NOT add details or long descriptions.
+
+Return EXACTLY this JSON structure:
+{
+  "horoscope": {
+    "summary": "one short sentence about today for ${sign}",
+    "luckyNumber": <1-9 integer>,
+    "luckyColor": { "name": "color name", "hex": "#RRGGBB", "emoji": "single emoji" },
+    "luckyTime": "HH:MM – HH:MM AM/PM",
+    "energy": <0-100 integer>,
+    "mood": "single mood word or short phrase",
+    "moonPhase": "phase name",
+    "moonEmoji": "single moon emoji",
+    "planets": [
+      { "name": "Sun",     "symbol": "☉", "position": "<zodiac sign>", "house": "<Nth>",  "influence": "positive|neutral|caution" },
+      { "name": "Moon",    "symbol": "☾", "position": "<zodiac sign>", "house": "<Nth>",  "influence": "positive|neutral|caution" },
+      { "name": "Mercury", "symbol": "☿", "position": "<zodiac sign>", "house": "<Nth>",  "influence": "positive|neutral|caution" },
+      { "name": "Venus",   "symbol": "♀", "position": "<zodiac sign>", "house": "<Nth>",  "influence": "positive|neutral|caution" },
+      { "name": "Mars",    "symbol": "♂", "position": "<zodiac sign>", "house": "<Nth>",  "influence": "positive|neutral|caution" },
+      { "name": "Jupiter", "symbol": "♃", "position": "<zodiac sign>", "house": "<Nth>",  "influence": "positive|neutral|caution" },
+      { "name": "Saturn",  "symbol": "♄", "position": "<zodiac sign>", "house": "<Nth>",  "influence": "positive|neutral|caution" },
+      { "name": "Rahu",    "symbol": "☊", "position": "<zodiac sign>", "house": "<Nth>",  "influence": "positive|neutral|caution" },
+      { "name": "Ketu",    "symbol": "☋", "position": "<zodiac sign>", "house": "<Nth>",  "influence": "positive|neutral|caution" }
+    ]
+  },
+  "report": {
+    "cosmicScore": <0-100 integer>,
+    "cosmicLabel": "Highly Favourable|Favourable|Moderate|Challenging",
+    "headline": "short bold headline about today",
+    "domains": [
+      {
+        "id": "love",
+        "score": <0-100>,
+        "summary": "one short planet influence note",
+        "subScores": [
+          { "label": "Romance",   "value": <0-100> },
+          { "label": "Harmony",   "value": <0-100> },
+          { "label": "Intimacy",  "value": <0-100> }
+        ],
+        "tips": ["short tip 1", "short tip 2", "short tip 3"]
+      },
+      {
+        "id": "career",
+        "score": <0-100>,
+        "summary": "one short planet influence note",
+        "subScores": [
+          { "label": "Focus",     "value": <0-100> },
+          { "label": "Influence", "value": <0-100> },
+          { "label": "Progress",  "value": <0-100> }
+        ],
+        "tips": ["short tip 1", "short tip 2", "short tip 3"]
+      },
+      {
+        "id": "health",
+        "score": <0-100>,
+        "summary": "one short planet influence note",
+        "subScores": [
+          { "label": "Physical",  "value": <0-100> },
+          { "label": "Mental",    "value": <0-100> },
+          { "label": "Immunity",  "value": <0-100> }
+        ],
+        "tips": ["short tip 1", "short tip 2", "short tip 3"]
+      },
+      {
+        "id": "wealth",
+        "score": <0-100>,
+        "summary": "one short planet influence note",
+        "subScores": [
+          { "label": "Income",     "value": <0-100> },
+          { "label": "Savings",    "value": <0-100> },
+          { "label": "Investment", "value": <0-100> }
+        ],
+        "tips": ["short tip 1", "short tip 2", "short tip 3"]
+      }
+    ],
+    "auspiciousSlots": [
+      { "time": "HH:MM – HH:MM AM/PM", "type": "best",  "activity": "short activity description" },
+      { "time": "HH:MM – HH:MM AM/PM", "type": "best",  "activity": "short activity description" },
+      { "time": "HH:MM – HH:MM AM/PM", "type": "good",  "activity": "short activity description" },
+      { "time": "HH:MM – HH:MM AM/PM", "type": "avoid", "activity": "short activity description (Rahu Kalam)" },
+      { "time": "HH:MM – HH:MM AM/PM", "type": "good",  "activity": "short activity description" },
+      { "time": "HH:MM – HH:MM AM/PM", "type": "avoid", "activity": "short activity description" }
+    ],
+    "remedies": [
+      { "type": "Gemstone",     "value": "<gemstone for ${sign}>", "desc": "short instruction", "color": "#FF6B8A", "fullMantra": null },
+      { "type": "Lucky Color",  "value": "<lucky color today>",    "desc": "short instruction", "color": "#FFB84A", "fullMantra": null },
+      { "type": "Fasting",      "value": "<day of week>",          "desc": "deity associated", "color": "#4AFF8C", "fullMantra": null },
+      { "type": "Mantra",       "value": "<mantra name>",          "desc": "short benefit",    "color": "#C8973A", "fullMantra": "<Devanagari text>" }
+    ],
+    "lifeTimeline": [
+      { "year": "${currentYear}–${(currentYear+1).toString().slice(2)}",       "label": "short key theme for this year" },
+      { "year": "${currentYear+1}–${(currentYear+2).toString().slice(2)}",     "label": "short key theme" },
+      { "year": "${currentYear+2}–${(currentYear+3).toString().slice(2)}",     "label": "short key theme" },
+      { "year": "${currentYear+3}+",                                           "label": "short long-term outlook" }
+    ]
+  }
+}`;
+
+  const response = await ai.chat.completions.create({
+    model: process.env.GEMINI_MODEL,
+    messages: [{ role: "user", content: prompt }],
+    temperature: 0.7,
+  });
+
+  const raw = response.choices[0]?.message?.content?.trim() || "";
+
+  // Strip any accidental markdown fences
+  const jsonStr = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+
+  return JSON.parse(jsonStr);
+}
+
+/**
+ * Generates and caches all dashboard data for a user for today.
+ * Safe to call multiple times — uses upsert (won't duplicate).
+ * Returns { horoscopeDoc, reportDoc } or throws.
+ */
+async function generateDashboardData(user, date) {
+  // Derive sign if not stored
+  const sign = user.sign || deriveSign(user.birthDate) || "Leo";
+
+  // ── 1. Check if data already exists for today ────────────────────────────
+  const [existingHoro, existingReport] = await Promise.all([
+    DailyHoroscope.findOne({ date, sign }),
+    Report.findOne({ userId: user._id, reportType: "daily", periodKey: date }),
+  ]);
+
+  if (existingHoro && existingReport) {
+    return { horoscopeDoc: existingHoro, reportDoc: existingReport };
+  }
+
+  // ── 2. Call AI (one call for everything) ─────────────────────────────────
+  const aiData = await callAiForDashboard(user, date);
+
+  const { horoscope: h, report: r } = aiData;
+
+  // ── 3. Save horoscope (shared by sign — upsert) ──────────────────────────
+  const horoscopeDoc = await DailyHoroscope.findOneAndUpdate(
+    { date, sign },
+    {
+      $setOnInsert: {
+        date,
+        sign,
+        summary:     h.summary     || "",
+        luckyNumber: h.luckyNumber || 7,
+        luckyColor:  h.luckyColor  || { name: "Gold", hex: "#C8973A", emoji: "🟡" },
+        luckyTime:   h.luckyTime   || "06:00 – 07:30 AM",
+        energy:      h.energy      ?? 70,
+        mood:        h.mood        || "Balanced",
+        moonPhase:   h.moonPhase   || "Waxing",
+        moonEmoji:   h.moonEmoji   || "🌖",
+        planets:     h.planets     || [],
+      },
+    },
+    { upsert: true, new: true }
+  );
+
+  // ── 4. Save personalised report (per user — upsert) ──────────────────────
+  const domainsWithMeta = (r.domains || []).map((d) => ({
+    id:        d.id,
+    label:     DOMAIN_META[d.id]?.label || d.id,
+    color:     DOMAIN_META[d.id]?.color || "#888888",
+    score:     d.score || 70,
+    summary:   d.summary || "",
+    detail:    d.summary || "",   // keep detail same as summary (no long text)
+    subScores: d.subScores || [],
+    tips:      d.tips || [],
+  }));
+
+  const remediesWithColor = (r.remedies || []).map((rem) => ({
+    type:       rem.type,
+    value:      rem.value,
+    desc:       rem.desc,
+    color:      REMEDY_COLORS[rem.type] || rem.color || "#888888",
+    fullMantra: rem.fullMantra || null,
+  }));
+
+  const reportDoc = await Report.findOneAndUpdate(
+    { userId: user._id, reportType: "daily", periodKey: date },
+    {
+      $setOnInsert: {
+        userId:          user._id,
+        reportType:      "daily",
+        periodKey:       date,
+        cosmicScore:     r.cosmicScore  ?? 70,
+        cosmicLabel:     r.cosmicLabel  || "Moderate",
+        headline:        r.headline     || "",
+        summary:         r.headline     || "",
+        domains:         domainsWithMeta,
+        planets:         h.planets      || [],
+        auspiciousSlots: r.auspiciousSlots || [],
+        remedies:        remediesWithColor,
+        yearlyForecast:  r.lifeTimeline || [],
+      },
+    },
+    { upsert: true, new: true }
+  );
+
+  return { horoscopeDoc, reportDoc };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUTH ENDPOINTS
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
  * POST /api/auth/register
- * Body: { email, password, name, birthDate, birthCity, lagna }
- * Returns: { token, user: { id, email, name, sign, lagna, birthDate, birthCity } }
- * Creates a new user account. Derives zodiac sign from birthDate on the server.
+ * Body: { email, password, name, birthDate, birthTime, birthCity, lagna, longitude, latitude, timeZone, gender }
+ * Returns: { token, user }
  */
 export const register = async (req, res) => {
   try {
-
     const { email, password, name, birthDate, birthTime, birthCity, lagna, longitude, latitude, timeZone, gender } = req.body;
 
     const existingUser = await User.findOne({ email });
@@ -22,11 +309,34 @@ export const register = async (req, res) => {
 
     const hashPassword = await bcrypt.hash(password, 10);
 
-    const user = await User.create({ email, password: hashPassword, name, birthDate, birthTime, birthCity, longitude, latitude, timeZone, gender });
+    // Derive sign from birthDate
+    const sign      = birthDate ? deriveSign(new Date(birthDate)) : null;
+    const signMeta  = sign ? (SIGN_META[sign] || {}) : {};
+
+    const user = await User.create({
+      email,
+      password: hashPassword,
+      name,
+      birthDate,
+      birthTime,
+      birthCity,
+      longitude,
+      latitude,
+      timeZone,
+      gender,
+      sign,
+      signSymbol: signMeta.symbol || null,
+      signColor:  signMeta.color  || null,
+      lagna:      lagna || null,
+    });
 
     const token = generateToken(user._id);
-
     const { password: _, ...userWithoutPassword } = user.toObject();
+
+    // Trigger background data generation (fire-and-forget)
+    generateDashboardData(user, todayKey()).catch((err) =>
+      console.error("register — background generation error:", err)
+    );
 
     return res.status(201).json({ message: "User created successfully", user: userWithoutPassword, token });
 
@@ -39,8 +349,7 @@ export const register = async (req, res) => {
 /**
  * POST /api/auth/login
  * Body: { email, password }
- * Returns: { token, user: { id, email, name, sign, signSymbol, signColor, lagna, birthDate, birthCity } }
- * Authenticates the user and returns a JWT.
+ * Returns: { token, user }
  */
 export const login = async (req, res) => {
   try {
@@ -61,10 +370,15 @@ export const login = async (req, res) => {
     }
 
     const token = generateToken(user._id);
-
     const { password: _, ...userWithoutPassword } = user.toObject();
 
-    return res.status(200).json({ message: "Login successful", user: userWithoutPassword, token });
+    // Respond immediately — don't block on generation
+    res.status(200).json({ message: "Login successful", user: userWithoutPassword, token });
+
+    // Trigger background AI data generation for today (fire-and-forget)
+    generateDashboardData(user, todayKey()).catch((err) =>
+      console.error("login — background generation error:", err)
+    );
 
   } catch (error) {
     console.log(error);
@@ -74,12 +388,9 @@ export const login = async (req, res) => {
 
 /**
  * POST /api/auth/logout
- * Headers: Authorization: Bearer <token>
- * Returns: { message: 'Logged out' }
- * Invalidates the session / blacklists the JWT.
  */
 export const logout = (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
+  res.status(200).json({ message: 'Logged out' });
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -88,182 +399,247 @@ export const logout = (req, res) => {
 
 /**
  * GET /api/user/profile
- * Headers: Authorization: Bearer <token>
- * Returns: { id, name, email, sign, signSymbol, signColor, lagna, birthDate, birthCity, avatarUrl }
- * Fetches the authenticated user's full profile including derived zodiac data.
+ * Returns the authenticated user's full profile.
  */
-export const getProfile = (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
+export const getProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const sign     = user.sign || deriveSign(user.birthDate) || "Leo";
+    const signMeta = SIGN_META[sign] || {};
+
+    return res.json({
+      id:          user._id,
+      name:        user.name,
+      email:       user.email,
+      sign,
+      signSymbol:  user.signSymbol  || signMeta.symbol || null,
+      signColor:   user.signColor   || signMeta.color  || null,
+      lagna:       user.lagna       || null,
+      birthDate:   user.birthDateFormatted || null,
+      birthCity:   user.birthCity   || null,
+      avatarUrl:   user.avatarUrl   || null,
+      isPremium:   user.isPremium   || false,
+    });
+  } catch (error) {
+    console.error("getProfile error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
 };
 
 /**
  * PUT /api/user/profile
- * Headers: Authorization: Bearer <token>
- * Body: { name?, birthCity?, avatarUrl? }
- * Returns: updated user object
- * Updates editable profile fields (name, city, avatar). birthDate and lagna
- * are immutable after registration.
  */
-export const updateProfile = (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
+export const updateProfile = async (req, res) => {
+  try {
+    const { name, birthCity, avatarUrl } = req.body;
+    const user = await User.findByIdAndUpdate(
+      req.userId,
+      { $set: { name, birthCity, avatarUrl } },
+      { new: true }
+    );
+    if (!user) return res.status(404).json({ message: "User not found" });
+    return res.json({ message: "Profile updated", user });
+  } catch (error) {
+    return res.status(500).json({ message: "Internal server error" });
+  }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HOROSCOPE / HOME ENDPOINTS
+// DASHBOARD ENDPOINTS  (single-call, cache-first)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * GET /api/horoscope/daily?userId=&date=YYYY-MM-DD
- * Headers: Authorization: Bearer <token>
- * Returns: {
- *   date, sign, summary,        // one-paragraph daily reading
- *   luckyNumber, luckyColor, luckyTime,
- *   energy,                     // 0–100 energy level
- *   mood,                       // e.g. "Confident", "Reflective"
- *   planets: [{ name, symbol, position, house, influence }]  // 9 Vedic planets
- * }
- * Powers the Home tab: DailyHoroscopeCard, LuckyStatsRow, PlanetaryOverview.
+ * GET /api/dashboard/home
+ * Returns everything the Home tab needs in one response.
+ * Cache-first: if today's data exists in DB, returns it instantly.
+ * If not, generates via AI then returns.
  */
-export const getHoroscope = (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
+export const getHomeDashboard = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const user   = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const date = todayKey();
+    const sign = user.sign || deriveSign(user.birthDate) || "Leo";
+
+    // Try cache first
+    let horoDoc = await DailyHoroscope.findOne({ date, sign });
+
+    if (!horoDoc) {
+      // Generate (and cache) — blocks until ready
+      const result = await generateDashboardData(user, date);
+      horoDoc = result.horoscopeDoc;
+    }
+
+    const signMeta = SIGN_META[sign] || {};
+
+    return res.json({
+      date,
+      sign,
+      signSymbol:  user.signSymbol  || signMeta.symbol || null,
+      signColor:   user.signColor   || signMeta.color  || null,
+      summary:     horoDoc.summary,
+      luckyNumber: horoDoc.luckyNumber,
+      luckyColor:  horoDoc.luckyColor,
+      luckyTime:   horoDoc.luckyTime,
+      energy:      horoDoc.energy,
+      mood:        horoDoc.mood,
+      moonPhase:   horoDoc.moonPhase,
+      moonEmoji:   horoDoc.moonEmoji,
+      planets:     horoDoc.planets,
+    });
+  } catch (error) {
+    console.error("getHomeDashboard error:", error);
+    return res.status(500).json({ message: "Failed to load home dashboard", error: error.message });
+  }
 };
 
 /**
- * GET /api/horoscope/auspicious-times?userId=&date=YYYY-MM-DD
- * Headers: Authorization: Bearer <token>
- * Returns: [{ time, type: 'best'|'good'|'avoid', activity }]
- * Powers AuspiciousTimeline on the Home tab and AuspiciousTimingsCard in Reports.
- * Times are calculated from the user's birth city (timezone + Rahu Kalam rules).
+ * GET /api/dashboard/reports
+ * Returns everything the Reports tab needs in one response.
+ * Cache-first: if today's report exists, returns it instantly.
  */
-export const getAuspiciousTimes = (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
+export const getReportsDashboard = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const user   = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const date = todayKey();
+    const sign = user.sign || deriveSign(user.birthDate) || "Leo";
+
+    // Try cache first
+    let reportDoc = await Report.findOne({ userId, reportType: "daily", periodKey: date });
+
+    if (!reportDoc) {
+      const result = await generateDashboardData(user, date);
+      reportDoc = result.reportDoc;
+    }
+
+    const signMeta = SIGN_META[sign] || {};
+
+    return res.json({
+      date,
+      // User profile data (for the header + profile strip)
+      userProfile: {
+        name:      user.name,
+        sign,
+        signSymbol: user.signSymbol || signMeta.symbol || null,
+        signColor:  user.signColor  || signMeta.color  || null,
+        lagna:      user.lagna      || null,
+        birthDate:  user.birthDateFormatted || null,
+        birthCity:  user.birthCity  || null,
+      },
+      // Report data
+      cosmicScore:     reportDoc.cosmicScore,
+      cosmicLabel:     reportDoc.cosmicLabel,
+      headline:        reportDoc.headline,
+      summary:         reportDoc.summary,
+      domains:         reportDoc.domains,
+      planets:         reportDoc.planets,
+      auspiciousSlots: reportDoc.auspiciousSlots,
+      remedies:        reportDoc.remedies,
+      lifeTimeline:    reportDoc.yearlyForecast,
+    });
+  } catch (error) {
+    console.error("getReportsDashboard error:", error);
+    return res.status(500).json({ message: "Failed to load reports dashboard", error: error.message });
+  }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// REPORTS ENDPOINTS
+// LEGACY HOROSCOPE ENDPOINTS (kept for backwards compat, delegate to dashboard)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * GET /api/reports/daily?userId=&date=YYYY-MM-DD
- * Headers: Authorization: Bearer <token>
- * Returns: {
- *   date, cosmicScore,           // overall 0–100 cosmic alignment score
- *   cosmicLabel,                 // e.g. "Highly Favourable"
- *   headline,                    // e.g. "Jupiter amplifies your potential"
- *   summary                      // 1–2 sentence overview for DailyScoreCard
- * }
- * Powers the top DailyScoreCard in the Reports tab.
- */
-export const getDailyReports = (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
+export const getHoroscope = async (req, res) => {
+  return getHomeDashboard(req, res);
 };
 
-/**
- * GET /api/reports/domains?userId=&date=YYYY-MM-DD&domain=love|career|health|wealth
- * Omit `domain` to return all four domains in one response.
- * Headers: Authorization: Bearer <token>
- * Returns: [{
- *   id: 'love'|'career'|'health'|'wealth',
- *   label, color, score,         // 0–100 domain score
- *   summary,                     // one-line planet influence note
- *   detail,                      // full paragraph reading for expanded view
- *   subScores: [{ label, value }],  // 3 sub-dimensions per domain
- *   tips: [string]               // 3 actionable tips
- * }]
- * Powers DomainExpandCard (Love, Career, Health, Wealth cards) in Reports tab.
- */
-export const getDomainReports = (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
-};
-
-/**
- * GET /api/reports/planet-transits?userId=&date=YYYY-MM-DD
- * Headers: Authorization: Bearer <token>
- * Returns: [{ name, symbol, position, house, influence: 'positive'|'neutral'|'caution' }]
- * 9 Vedic planets (Sun, Moon, Mercury, Venus, Mars, Jupiter, Saturn, Rahu, Ketu).
- * Powers PlanetInfluenceStrip in Reports tab.
- */
-export const getPlanetTransits = (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
-};
-
-/**
- * GET /api/reports/auspicious-timings?userId=&date=YYYY-MM-DD
- * Headers: Authorization: Bearer <token>
- * Returns: [{ time, type: 'best'|'good'|'avoid', activity }]
- * Same data as /api/horoscope/auspicious-times but scoped to the Reports tab.
- * Can be a proxy to the same calculation service.
- */
-export const getAuspiciousTimingsReport = (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
-};
-
-/**
- * GET /api/reports/remedies?userId=&date=YYYY-MM-DD
- * Headers: Authorization: Bearer <token>
- * Returns: [{
- *   type: 'Gemstone'|'Lucky Color'|'Fasting'|'Mantra',
- *   value,          // e.g. "Ruby", "Golden Yellow", "Sunday", "Om Suryaya Namah"
- *   desc,           // short instruction
- *   color,          // hex accent color for UI
- *   fullMantra?     // Sanskrit / Devanagari string, only for Mantra type
- * }]
- * Powers RemediesCard in Reports tab. Based on current planetary positions
- * relative to user's natal chart.
- */
-export const getRemedies = (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
-};
-
-/**
- * GET /api/reports/yearly?userId=&year=YYYY
- * Headers: Authorization: Bearer <token>
- * Returns: [{ year, label }]  // multi-year life path forecast
- * Powers LifeTimelineCard in Reports tab. Based on major Dasha/transit cycles
- * calculated from user's birth details. year ranges like "2024–25".
- */
-export const getYearlyReports = (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
-};
-
-/**
- * GET /api/reports/weekly?userId=&weekStartDate=YYYY-MM-DD
- * Headers: Authorization: Bearer <token>
- * Returns: { weekRange, cosmicScore, summary, days: [{ date, score, highlight }] }
- * Powers the Weekly tab in ReportTypeSelector (currently "coming soon" / premium).
- */
-export const getWeeklyReports = (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
-};
-
-/**
- * GET /api/reports/monthly?userId=&month=YYYY-MM
- * Headers: Authorization: Bearer <token>
- * Returns: { month, cosmicScore, summary, weeks: [...] }
- * Powers the Monthly tab (currently "coming soon" / premium).
- */
-export const getMonthlyReports = (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
-};
-
-/**
- * POST /api/reports/share
- * Headers: Authorization: Bearer <token>
- * Body: { userId, date, reportType: 'daily'|'weekly'|'monthly'|'yearly' }
- * Returns: { shareUrl, shareText }
- * Generates a shareable link/text for the report (used by the Share button in ReportsHeader).
- */
-export const shareReport = (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
+export const getAuspiciousTimes = async (req, res) => {
+  try {
+    const userId = req.userId || req.query.userId;
+    if (!userId) return res.status(400).json({ message: "userId required" });
+    const date = req.query.date || todayKey();
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    const sign = user.sign || deriveSign(user.birthDate) || "Leo";
+    let reportDoc = await Report.findOne({ userId, reportType: "daily", periodKey: date });
+    if (!reportDoc) {
+      const result = await generateDashboardData(user, date);
+      reportDoc = result.reportDoc;
+    }
+    return res.json(reportDoc.auspiciousSlots || []);
+  } catch (error) {
+    return res.status(500).json({ message: "Internal server error" });
+  }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CHAT / AI ENDPOINTS
+// REPORTS ENDPOINTS (legacy stubs → delegate)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const getDailyReports       = (req, res) => getReportsDashboard(req, res);
+export const getDomainReports      = (req, res) => getReportsDashboard(req, res);
+export const getPlanetTransits     = (req, res) => getHomeDashboard(req, res);
+export const getAuspiciousTimingsReport = (req, res) => getAuspiciousTimes(req, res);
+
+export const getRemedies = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const date   = req.query.date || todayKey();
+    const user   = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    let reportDoc = await Report.findOne({ userId, reportType: "daily", periodKey: date });
+    if (!reportDoc) {
+      const result = await generateDashboardData(user, date);
+      reportDoc = result.reportDoc;
+    }
+    return res.json(reportDoc.remedies || []);
+  } catch (error) {
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const getYearlyReports = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const year   = req.query.year || new Date().getFullYear().toString();
+    const user   = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    let reportDoc = await Report.findOne({ userId, reportType: "daily", periodKey: todayKey() });
+    if (!reportDoc) {
+      const result = await generateDashboardData(user, todayKey());
+      reportDoc = result.reportDoc;
+    }
+    return res.json(reportDoc.yearlyForecast || []);
+  } catch (error) {
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const getWeeklyReports  = (req, res) => res.status(501).json({ message: "Premium feature" });
+export const getMonthlyReports = (req, res) => res.status(501).json({ message: "Premium feature" });
+
+export const shareReport = async (req, res) => {
+  try {
+    const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+    return res.json({
+      shareText: `✦ My Cosmiq Daily Report — ${today}\n\nDownload Cosmiq for your personalised astrology reports.`,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CHAT ENDPOINTS
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Builds a concise natal-chart summary string to inject into the AI system prompt.
- * Keeps the prompt short while giving the model essential birth context.
  */
 function buildNatalChartForAi(user) {
   const lines = [
@@ -280,12 +656,6 @@ function buildNatalChartForAi(user) {
 
 /**
  * POST /api/chat/message
- * Headers: Authorization: Bearer <token>
- * Body: { userId, message, conversationId? }
- * Returns: { reply, conversationId, isVoice?: false }
- * Proxies the user's message to the LLM (e.g. Claude / GPT-4) with the user's
- * natal chart injected as system context. The backend holds the AI API key.
- * Powers ChatScreen (Cosmiq AI tab).
  */
 export const chatMessage = async (req, res) => {
 
@@ -307,7 +677,6 @@ export const chatMessage = async (req, res) => {
 
   const natalChart = buildNatalChartForAi(user);
 
-  // ── Build the system prompt ───────────────────────────────────────────────
   const systemPrompt = `You are Cosmiq AI, an expert Vedic astrologer and cosmic guide.
 
 Today's date is: ${new Date().toISOString().slice(0, 10)}
@@ -324,7 +693,6 @@ Guidelines:
 6. Use emojis sparingly to keep the tone friendly but not overwhelming.
 7. Keep responses concise — 2-4 short paragraphs unless more depth is requested.`;
 
-  // ── Call the AI ───────────────────────────────────────────────────────────
   let reply;
   try {
     const response = await ai.chat.completions.create({
@@ -340,17 +708,12 @@ Guidelines:
     return res.status(500).json({ error: "Failed to generate AI response" });
   }
 
-  // ── Resolve conversationId ────────────────────────────────────────────────
-  // We need the conversationId to include in the response so the client can
-  // send follow-ups in the same thread.  Find or create it synchronously
-  // (just the document shell), then append messages asynchronously.
   let conv;
   try {
     if (conversationId) {
       conv = await ChatConversation.findOne({ _id: conversationId, userId });
     }
     if (!conv) {
-      // Create a new conversation shell — messages will be appended below
       conv = await ChatConversation.create({
         userId,
         title: message.trim().slice(0, 60),
@@ -363,16 +726,12 @@ Guidelines:
       });
     }
   } catch (error) {
-    // Non-fatal: we still reply to the user even if DB creation fails.
     console.error("chatMessage — conversation create error:", error);
   }
 
-  // ── Respond to the client immediately ────────────────────────────────────
   const resolvedConvId = conv?._id?.toString() ?? null;
   res.json({ reply, conversationId: resolvedConvId, isVoice: false });
 
-  // ── Persist messages asynchronously (fire-and-forget) ────────────────────
-  // We do NOT await this — the client already has the reply.
   if (conv) {
     const now = new Date();
     ChatConversation.findByIdAndUpdate(
@@ -394,10 +753,7 @@ Guidelines:
 };
 
 /**
- * GET /api/chat/history?userId=&conversationId=&limit=20&offset=0
- * Headers: Authorization: Bearer <token>
- * Returns: { messages: [{ id, role: 'user'|'ai', text, timestamp, isVoice }] }
- * Fetches paginated chat history for the ChatScreen to restore on re-open.
+ * GET /api/chat/history
  */
 export const chatHistory = async (req, res) => {
   const userId = req.userId;
@@ -416,9 +772,8 @@ export const chatHistory = async (req, res) => {
     const limitNum  = Math.min(Number(limit)  || 20, 100);
     const offsetNum = Number(offset) || 0;
 
-    // Slice messages array with pagination (newest messages last)
-    const total    = conv.messages.length;
-    const sliced   = conv.messages.slice(offsetNum, offsetNum + limitNum);
+    const total   = conv.messages.length;
+    const sliced  = conv.messages.slice(offsetNum, offsetNum + limitNum);
 
     const messages = sliced.map((m) => ({
       id:        m._id.toString(),
@@ -429,13 +784,7 @@ export const chatHistory = async (req, res) => {
       timestamp: m.timestamp,
     }));
 
-    return res.json({
-      conversationId,
-      total,
-      offset:    offsetNum,
-      limit:     limitNum,
-      messages,
-    });
+    return res.json({ conversationId, total, offset: offsetNum, limit: limitNum, messages });
   } catch (error) {
     console.error("chatHistory error:", error);
     return res.status(500).json({ message: "Internal server error" });
@@ -443,69 +792,12 @@ export const chatHistory = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ASTROLOGERS ENDPOINTS
+// ASTROLOGERS / NOTIFICATIONS / STARBASE (stubs — not in scope)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * GET /api/astrologers?page=1&limit=20&specialty=vedic|tarot|numerology
- * Returns: [{ id, name, avatarUrl, specialty, rating, reviewCount, pricePerMin, isOnline }]
- * Powers the Astrologers tab (currently a placeholder).
- */
-export const getAstrologers = (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
-};
-
-/**
- * GET /api/astrologers/:id
- * Returns: full astrologer profile with bio, availability, reviews
- * Powers an astrologer detail/booking screen (to be built).
- */
-export const getAstrologerById = (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// NOTIFICATIONS ENDPOINTS
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * GET /api/notifications?userId=&limit=20&offset=0
- * Headers: Authorization: Bearer <token>
- * Returns: [{ id, title, body, type, isRead, createdAt }]
- * Powers NotificationsScreen. Types: 'daily_report', 'auspicious_alert', 'chat_reply'.
- */
-export const getNotifications = (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
-};
-
-/**
- * PUT /api/notifications/:id/read
- * Headers: Authorization: Bearer <token>
- * Returns: { success: true }
- * Marks a single notification as read.
- */
-export const markNotificationAsRead = (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// STARBASE ENDPOINTS
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * GET /api/starbase/articles?category=planets|signs|houses|remedies&page=1
- * Returns: [{ id, title, excerpt, category, imageUrl, isPremium }]
- * Powers the Starbase tab (currently a placeholder).
- * Vedic astrology knowledge base articles.
- */
-export const getStarbaseArticles = (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
-};
-
-/**
- * GET /api/starbase/articles/:id
- * Returns: full article { id, title, body, category, imageUrl, isPremium }
- */
-export const getStarbaseArticleById = (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
-};
+export const getAstrologers          = (req, res) => res.status(501).json({ message: "Not implemented" });
+export const getAstrologerById       = (req, res) => res.status(501).json({ message: "Not implemented" });
+export const getNotifications        = (req, res) => res.status(501).json({ message: "Not implemented" });
+export const markNotificationAsRead  = (req, res) => res.status(501).json({ message: "Not implemented" });
+export const getStarbaseArticles     = (req, res) => res.status(501).json({ message: "Not implemented" });
+export const getStarbaseArticleById  = (req, res) => res.status(501).json({ message: "Not implemented" });

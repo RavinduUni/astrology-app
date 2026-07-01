@@ -5,10 +5,13 @@ import {
     logout,
     getProfile,
     updateProfile,
+    getHomeDashboard,
+    getReportsDashboard,
     getHoroscope,
     getAuspiciousTimes,
     getDailyReports,
     getDomainReports,
+    getRemedies,
     getYearlyReports,
     getWeeklyReports,
     getMonthlyReports,
@@ -26,20 +29,46 @@ import { verifyToken } from "../middlewares/verifyToken.js";
 
 const mainRouter = Router();
 
-mainRouter.post("/auth/register",register)
-mainRouter.post("/auth/login",login)
-mainRouter.post("/auth/logout",logout)
+// ── Auth ────────────────────────────────────────────────────────────────────
+mainRouter.post("/auth/register", register)
+mainRouter.post("/auth/login", login)
+mainRouter.post("/auth/logout", logout)
 
-mainRouter.get("/user/profile",getProfile)
-mainRouter.put("/user/profile",updateProfile)
+// ── User ─────────────────────────────────────────────────────────────────────
+mainRouter.get("/user/profile", verifyToken, getProfile)
+mainRouter.put("/user/profile", verifyToken, updateProfile)
 
-mainRouter.get("/horoscope",getHoroscope)
-mainRouter.get("/horoscope/auspicious-times",getAuspiciousTimes)
+// ── Dashboard (new single-call endpoints) ────────────────────────────────────
+mainRouter.get("/dashboard/home", verifyToken, getHomeDashboard)
+mainRouter.get("/dashboard/reports", verifyToken, getReportsDashboard)
 
-mainRouter.get("/reports",getDailyReports)
-mainRouter.get("/reports/:domain",getDomainReports)
+// ── Horoscope (legacy — delegates to dashboard) ───────────────────────────────
+mainRouter.get("/horoscope", verifyToken, getHoroscope)
+mainRouter.get("/horoscope/auspicious-times", verifyToken, getAuspiciousTimes)
 
-mainRouter.post("/chat/message",verifyToken,chatMessage)
-mainRouter.get("/chat/history",verifyToken,chatHistory)
+// ── Reports (legacy) ─────────────────────────────────────────────────────────
+mainRouter.get("/reports", verifyToken, getDailyReports)
+mainRouter.get("/reports/remedies", verifyToken, getRemedies)
+mainRouter.get("/reports/yearly", verifyToken, getYearlyReports)
+mainRouter.get("/reports/weekly", verifyToken, getWeeklyReports)
+mainRouter.get("/reports/monthly", verifyToken, getMonthlyReports)
+mainRouter.get("/reports/:domain", verifyToken, getDomainReports)
+mainRouter.post("/reports/share", verifyToken, shareReport)
+
+// ── Chat ─────────────────────────────────────────────────────────────────────
+mainRouter.post("/chat/message", verifyToken, chatMessage)
+mainRouter.get("/chat/history", verifyToken, chatHistory)
+
+// ── Astrologers ───────────────────────────────────────────────────────────────
+mainRouter.get("/astrologers", getAstrologers)
+mainRouter.get("/astrologers/:id", getAstrologerById)
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+mainRouter.get("/notifications", verifyToken, getNotifications)
+mainRouter.put("/notifications/:id/read", verifyToken, markNotificationAsRead)
+
+// ── Starbase ──────────────────────────────────────────────────────────────────
+mainRouter.get("/starbase/articles", getStarbaseArticles)
+mainRouter.get("/starbase/articles/:id", getStarbaseArticleById)
 
 export default mainRouter;

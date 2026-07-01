@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,7 @@ import QuickActions from '../../components/home/QuickActions';
 import AuspiciousTimeline from '../../components/home/AuspiciousTimeline';
 
 import { useAstroData } from '../../hooks/useAstroData';
+import { useAuth } from '../context/AuthContext';
 import { Colors } from '../../constants/Colors';
 import { Typography } from '../../constants/Typography';
 import { Layout } from '../../constants/Layout';
@@ -30,7 +31,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 
-// Floating AI chat button
+// ── Floating AI chat button ───────────────────────────────────────────────────
 function FloatingAIButton({ onPress }) {
   const scale = useRef(new Animated.Value(1)).current;
   const pulse = useRef(new Animated.Value(1)).current;
@@ -105,81 +106,22 @@ const fabStyles = StyleSheet.create({
   },
 });
 
-// Zodiac sign selector strip
-const SIGNS = ['𓃵', '𓄀', '☽☾', '𓄂', '𓄂', '𐦍', '𓍝', '𓆫', '𓄇', '𓄈', '𓄉', '𓄊'];
-const SIGN_NAMES = [
-  'Aries','Taurus','Gemini','Cancer','Leo','Virgo',
-  'Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces',
-];
-
-function SignStrip({ selected, onSelect }) {
-  return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={stripStyles.scroll}
-      style={stripStyles.container}
-    >
-      {SIGN_NAMES.map((name, i) => {
-        const isSelected = name === selected;
-        return (
-          <TouchableOpacity
-            key={name}
-            onPress={() => onSelect(name)}
-            style={[
-              stripStyles.pill,
-              isSelected && stripStyles.pillActive,
-            ]}
-            activeOpacity={0.7}
-          >
-            <Text style={[stripStyles.symbol, isSelected && stripStyles.symbolActive]}>
-              {SIGNS[i]}
-            </Text>
-            <Text style={[stripStyles.name, isSelected && stripStyles.nameActive]}>
-              {name}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
-    </ScrollView>
-  );
-}
-
-const stripStyles = StyleSheet.create({
-  container: { marginVertical: 16 },
-  scroll: { gap: 8, paddingHorizontal: 0, paddingVertical: 2 },
-  pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: Layout.radiusFull,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  pillActive: {
-    backgroundColor: 'rgba(200,151,58,0.15)',
-    borderColor: Colors.gold,
-  },
-  symbol: { fontSize: 13, color: Colors.white },
-  symbolActive: { color: Colors.gold },
-  name: { fontSize: 11, fontWeight: '600', color: 'white' },
-  nameActive: { color: Colors.goldLight, fontWeight: '700' },
-});
-
-// ── Main Home Dashboard ─────────────────────────────────────────────────────
+// ── Main Home Dashboard ───────────────────────────────────────────────────────
 export default function HomeDashboard() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const [selectedSign, setSelectedSign] = useState('Leo');
-  const [refreshing, setRefreshing] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const { data, loading } = useAstroData(selectedSign);
+  // Auth context — provides the logged-in user info
+  const { user, refreshDashboardData } = useAuth();
 
+  // Astro data — reads from AuthContext.homeData (no extra API call)
+  const { data, loading } = useAstroData();
+
+  const [refreshing, setRefreshing] = React.useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
+
+  // Derive display name from user object (handles both decoded JWT and full user object)
+  const displayName = user?.name || user?.id || 'Stargazer';
 
   // Parallax header opacity
   const headerOpacity = scrollY.interpolate({
@@ -190,10 +132,11 @@ export default function HomeDashboard() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await new Promise((r) => setTimeout(r, 1400));
-    setRefreshKey((k) => k + 1);
+    try {
+      await refreshDashboardData();
+    } catch (_) {}
     setRefreshing(false);
-  }, []);
+  }, [refreshDashboardData]);
 
   const handleQuickAction = (id) => {
     if (id === 'chat') {
@@ -237,16 +180,13 @@ export default function HomeDashboard() {
               {/* ── Header ── */}
               <Animated.View style={{ opacity: headerOpacity }}>
                 <HomeHeader
-                  name="Arya Silva"
+                  name={displayName}
                   moonPhase={data?.moonPhase}
                   moonEmoji={data?.moonEmoji}
                   date={data?.date}
                   onNotificationPress={() => router.push('/screens/NotificationsScreen')}
                 />
               </Animated.View>
-
-              {/* ── Zodiac sign strip ── */}
-              <SignStrip selected={selectedSign} onSelect={setSelectedSign} />
 
               {/* ── Daily horoscope hero card ── */}
               <DailyHoroscopeCard data={data} />
