@@ -7,7 +7,7 @@ import * as SecureStore from 'expo-secure-store';
 // Android emulator shortcut: http://10.0.2.2:5000
 const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
-const REQUEST_TIMEOUT_MS = 30_000; // 30 seconds (AI responses can be slow)
+const REQUEST_TIMEOUT_MS = 60_000; // 60 seconds (matches Vercel maxDuration for AI calls)
 
 /**
  * Called automatically on any 401 response so the AuthContext can

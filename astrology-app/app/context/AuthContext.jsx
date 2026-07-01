@@ -48,33 +48,38 @@ export const AuthProvider = ({ children }) => {
   };
 
   /**
-   * Fetches Home and Reports dashboard data in parallel.
-   * Called once after login (or on bootstrap if token exists).
-   * Subsequent calls within the same day are instant (server cache).
+   * Fetches Home and Reports dashboard data with polling.
+   * If the backend returns { pending: true }, it means data is generating,
+   * so it waits 3 seconds and tries again (up to 15 times).
    */
-  const fetchDashboardData = useCallback(async () => {
+  const fetchDashboardData = useCallback(() => {
     setHomeDataLoading(true);
     setReportsDataLoading(true);
 
-    // Fetch both dashboards in parallel
-    const [homeResult, reportsResult] = await Promise.allSettled([
-      getHomeDashboard(),
-      getReportsDashboard(),
-    ]);
+    const pollWithRetry = async (apiCall, setter, loadingSetter, retries = 15) => {
+      try {
+        for (let i = 0; i < retries; i++) {
+          const res = await apiCall();
+          if (res.pending) {
+            // Wait 3 seconds and try again
+            await new Promise((r) => setTimeout(r, 3000));
+            continue;
+          }
+          setter(res);
+          loadingSetter(false);
+          return;
+        }
+        console.warn("fetchDashboardData — polling timed out");
+        loadingSetter(false);
+      } catch (err) {
+        console.warn("fetchDashboardData — error:", err.message || err);
+        loadingSetter(false);
+      }
+    };
 
-    if (homeResult.status === "fulfilled") {
-      setHomeData(homeResult.value);
-    } else {
-      console.warn("fetchDashboardData — home error:", homeResult.reason);
-    }
-    setHomeDataLoading(false);
-
-    if (reportsResult.status === "fulfilled") {
-      setReportsData(reportsResult.value);
-    } else {
-      console.warn("fetchDashboardData — reports error:", reportsResult.reason);
-    }
-    setReportsDataLoading(false);
+    // Fire and forget polling for both
+    pollWithRetry(getHomeDashboard, setHomeData, setHomeDataLoading);
+    pollWithRetry(getReportsDashboard, setReportsData, setReportsDataLoading);
   }, []);
 
   /** Internal helper — clears local state without hitting the server. */

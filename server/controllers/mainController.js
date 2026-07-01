@@ -469,9 +469,11 @@ export const getHomeDashboard = async (req, res) => {
     let horoDoc = await DailyHoroscope.findOne({ date, sign });
 
     if (!horoDoc) {
-      // Generate (and cache) — blocks until ready
-      const result = await generateDashboardData(user, date);
-      horoDoc = result.horoscopeDoc;
+      // Generate (and cache) in the background — don't block the request
+      generateDashboardData(user, date).catch(err => 
+        console.error("Background dashboard generation failed:", err)
+      );
+      return res.status(202).json({ pending: true, message: "Generating dashboard data..." });
     }
 
     const signMeta = SIGN_META[sign] || {};
@@ -515,8 +517,11 @@ export const getReportsDashboard = async (req, res) => {
     let reportDoc = await Report.findOne({ userId, reportType: "daily", periodKey: date });
 
     if (!reportDoc) {
-      const result = await generateDashboardData(user, date);
-      reportDoc = result.reportDoc;
+      // Generate (and cache) in the background — don't block the request
+      generateDashboardData(user, date).catch(err => 
+        console.error("Background dashboard generation failed:", err)
+      );
+      return res.status(202).json({ pending: true, message: "Generating report data..." });
     }
 
     const signMeta = SIGN_META[sign] || {};
